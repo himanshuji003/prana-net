@@ -1,0 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Sora:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "DM Serif Display", serif;
+  --font-sans: "Sora", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-forest-primary: #0D1A12;
+  --color-forest-secondary: #111F16;
+  --color-forest-card: #152318;
+  --color-forest-elevated: #1C2E20;
+
+  --color-cream: #E8E4D9;
+  --color-muted: #A8A89C;
+  --color-lime: #C6E47A;
+
+  --color-health-green: #4CAF72;
+  --color-health-amber: #E8A838;
+  --color-health-red: #E05252;
+  --color-accent-teal: #3DBFAD;
+  --color-accent-gold: #D4A84B;
+  --color-health-purple: #A855F7;
+  --color-health-darkred: #7F1D1D;
+
+  --color-border-forest: #1E3225;
+  --color-border-forest-light: #2A4432;
+  --color-background: #0D1A12;
+  --color-foreground: #E8E4D9;
+
+  @keyframes scrollLeft {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  @keyframes scrollRight {
+    0%   { transform: translateX(-50%); }
+    100% { transform: translateX(0); }
+  }
+  @keyframes floatOrb {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(30px, -30px) scale(1.08); }
+    100% { transform: translate(0, 0) scale(1); }
+  }
+  @keyframes leafSway {
+    0%   { transform: rotate(-6deg) translateY(0px); }
+    50%  { transform: rotate(6deg) translateY(-12px); }
+    100% { transform: rotate(-6deg) translateY(0px); }
+  }
+  @keyframes leafDrift {
+    0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 0.6; }
+    33%  { transform: translateY(-18px) rotate(8deg) scale(1.05); opacity: 0.9; }
+    66%  { transform: translateY(-8px) rotate(-4deg) scale(0.97); opacity: 0.7; }
+    100% { transform: translateY(0) rotate(0deg) scale(1); opacity: 0.6; }
+  }
+  @keyframes bushSway {
+    0%   { transform: scaleX(1) rotate(0deg); transform-origin: bottom center; }
+    40%  { transform: scaleX(1.04) rotate(1.5deg); transform-origin: bottom center; }
+    80%  { transform: scaleX(0.98) rotate(-1deg); transform-origin: bottom center; }
+    100% { transform: scaleX(1) rotate(0deg); transform-origin: bottom center; }
+  }
+  @keyframes sensorPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(76,175,114,0.6); }
+    70%  { box-shadow: 0 0 0 14px rgba(76,175,114,0); }
+    100% { box-shadow: 0 0 0 0 rgba(76,175,114,0); }
+  }
+  @keyframes ripple {
+    0%   { transform: scale(0.8); opacity: 0.6; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(0); opacity: 0.8; }
+    100% { transform: translateY(-20px); opacity: 0; }
+  }
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes dashMove {
+    to { stroke-dashoffset: -20; }
+  }
+  @keyframes feedScroll {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-50%); }
+  }
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--color-border-forest);
+  }
+  body, html {
+    background-color: var(--color-forest-primary);
+    color: var(--color-cream);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-serif); }
+  .font-data    { font-family: var(--font-mono); }
+
+  .glass-panel {
+    background: rgba(17,31,22,0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .glass-card {
+    background: rgba(21,35,24,0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 8px 32px 0 rgba(0,0,0,0.36);
+  }
+  .corner-bracket {
+    position: relative;
+  }
+  .corner-bracket::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 24px; height: 24px;
+    border-top: 2px solid #4CAF72;
+    border-left: 2px solid #4CAF72;
+  }
+  .corner-bracket::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 24px; height: 24px;
+    border-bottom: 2px solid #4CAF72;
+    border-right: 2px solid #4CAF72;
+  }
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    padding-bottom: 32px;
+  }
+  .section-label::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--color-border-forest-light);
+    flex-shrink: 0;
+  }
+  .animate-scroll-left  { animation: scrollLeft  40s linear infinite; }
+  .animate-scroll-right { animation: scrollRight 55s linear infinite; }
+  .animate-leaf-sway    { animation: leafSway 4s ease-in-out infinite; }
+  .animate-leaf-drift   { animation: leafDrift 5s ease-in-out infinite; }
+  .animate-bush-sway    { animation: bushSway 5s ease-in-out infinite; }
+  .animate-orb          { animation: floatOrb 12s ease-in-out infinite alternate; }
+  .animate-sensor-pulse { animation: sensorPulse 2s infinite; }
+  .animate-feed-scroll  { animation: feedScroll 12s linear infinite; }
+  .grid-texture {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, #1E3225 39px, #1E3225 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, #1E3225 39px, #1E3225 40px);
+    background-size: 40px 40px;
+  }
+}
+
+/* Google Fonts import */
+::selection {
+  background-color: var(--color-health-green);
+  color: var(--color-forest-primary);
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-forest-primary); }
+::-webkit-scrollbar-thumb { background: var(--color-border-forest-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-health-green); }

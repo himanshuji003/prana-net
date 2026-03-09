@@ -1,0 +1,321 @@
+import { useState, useRef, useEffect } from "react";
+import { Routes, Route, Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Home, Map as MapIcon, ClipboardCheck, MessageSquare,
+  User, Upload, CheckCircle2, Navigation, Send, CheckCheck
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { StatusPill } from "@/components/shared/StatusPill";
+import { AnimatedCTA } from "@/components/shared/AnimatedCTA";
+
+// ─── Bottom Nav ────────────────────────────────────────────────────────────────
+const BottomNav = () => {
+  const location = useLocation();
+  const navItems = [
+    { name: "Home",   path: "/officer",         icon: Home },
+    { name: "Map",    path: "/officer/map",      icon: MapIcon },
+    { name: "Tasks",  path: "/officer/tasks",    icon: ClipboardCheck },
+    { name: "Chat",   path: "/officer/messages", icon: MessageSquare, badge: 1 },
+    { name: "Me",     path: "/officer/profile",  icon: User },
+  ];
+  return (
+    <div className="fixed bottom-0 left-0 w-full h-16 bg-[#0D1A12] border-t border-border-forest-light z-50 flex items-center justify-around px-2">
+      {navItems.map((item) => {
+        const isActive = location.pathname === item.path;
+        const Icon = item.icon;
+        return (
+          <Link key={item.name} to={item.path}
+            className={cn("flex flex-col items-center justify-center w-16 h-full relative transition-colors", isActive ? "text-lime" : "text-muted hover:text-cream")}>
+            <Icon className="h-5 w-5 mb-1" />
+            <span className="font-sans text-[10px] uppercase font-semibold">{item.name}</span>
+            {item.badge && <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-health-red flex items-center justify-center font-data text-[9px] text-white font-bold">{item.badge}</div>}
+          </Link>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Mobile Header ─────────────────────────────────────────────────────────────
+const MobileHeader = ({ title }: { title?: string }) => (
+  <header className="h-14 bg-forest-secondary flex items-center justify-between px-4 border-b border-border-forest-light sticky top-[72px] z-40">
+    <div className="flex items-center gap-1">
+      <span className="font-display italic text-cream text-lg">P</span>
+      <span className="h-1 w-1 bg-lime rounded-full" />
+      <span className="font-display italic text-cream text-lg">N</span>
+    </div>
+    {title && <span className="font-sans text-sm font-semibold text-muted uppercase tracking-wider">{title}</span>}
+    <div className="flex items-center gap-2">
+      <span className="font-sans text-xs font-semibold text-cream">D. Jackson</span>
+      <div className="h-2 w-2 rounded-full bg-health-green animate-pulse" />
+    </div>
+  </header>
+);
+
+// ─── ACTIVE TASK TAB ───────────────────────────────────────────────────────────
+const ActiveTaskTab = () => {
+  const [taskState, setTaskState] = useState(0); // 0-4
+
+  const steps = [
+    { label: "Accept Task",      bg: "bg-health-green text-forest-primary" },
+    { label: "Start Inspection", bg: "bg-health-amber text-forest-primary" },
+    { label: "Action Taken",     bg: "bg-health-green text-forest-primary" },
+    { label: "Mark Resolved",    bg: "bg-accent-teal text-forest-primary" },
+  ];
+
+  return (
+    <div className="pb-24">
+      <MobileHeader title="Active Task" />
+
+      <AnimatePresence>
+        {taskState < 4 && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            className="w-full bg-health-red/10 border-l-4 border-health-red border-y border-y-border-forest flex items-start p-4 gap-3 relative overflow-hidden">
+            {taskState === 0 && <div className="absolute left-0 top-0 h-full w-1 bg-health-red animate-pulse" />}
+            <div className="flex-1">
+              <span className="font-sans text-[10px] uppercase tracking-[0.2em] font-bold text-health-red">⚡ New Assignment</span>
+              <div className="font-data text-xl text-health-red font-bold mt-1">TKN-2024-847</div>
+              <p className="font-sans text-sm text-cream mt-1">Industrial Smoke Emission</p>
+              <div className="flex items-center gap-2 mt-2 font-sans text-xs text-muted">
+                <Navigation className="h-3 w-3" /> Zone 4A — Sector 9
+              </div>
+            </div>
+            <div className="text-right">
+              <StatusPill label="High" level="hazardous" />
+              <p className="font-data text-[10px] text-muted mt-2">14:02 PM</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {taskState < 4 ? (
+        <motion.div layout className="m-4 bg-forest-card border border-border-forest-light rounded p-5">
+          <p className="font-sans text-[15px] text-muted leading-relaxed mb-4">
+            Large plumes of dark gray smoke reported. Suspected chemical hazard. Respiratory suppression gear recommended.
+          </p>
+          <div className="bg-health-green/10 border border-health-green/30 text-lime p-3 rounded font-sans text-xs flex gap-2 mb-6 items-start">
+            <span className="shrink-0 mt-0.5 animate-pulse">⚡</span>
+            <span><b>AI Recommended:</b> Deploy water misting units. Verify facility permit codes on site.</span>
+          </div>
+
+          {/* Sequential steps with vertical timeline line */}
+          <div className="relative pl-6 space-y-3">
+            <div className="absolute left-[11px] top-3 bottom-3 w-px border-l-2 border-dashed border-border-forest-light" />
+            {steps.map((btn, i) => {
+              if (i > taskState) return null;
+              const isActive = i === taskState;
+              const isDone = i < taskState;
+              return (
+                <div key={i} className="relative flex items-center gap-3">
+                  {/* Timeline dot */}
+                  <div className={cn("absolute -left-6 w-6 h-6 rounded-full flex items-center justify-center z-10 border-2",
+                    isDone ? "bg-health-green border-health-green text-forest-primary" : isActive ? "bg-accent-teal border-accent-teal text-forest-primary" : "bg-forest-elevated border-border-forest-light"
+                  )}>
+                    {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="font-data text-[10px] font-bold">{i+1}</span>}
+                  </div>
+                  <motion.button layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                    onClick={() => isActive && setTaskState(s => s + 1)}
+                    disabled={isDone}
+                    className={cn("flex-1 h-12 rounded font-sans text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200",
+                      isDone ? "bg-forest-elevated text-muted/50 border border-border-forest-light line-through" : isActive ? btn.bg : "bg-forest-elevated text-muted border border-border-forest-light"
+                    )}>
+                    {isDone ? <><CheckCircle2 className="h-4 w-4" /> Completed</> : btn.label}
+                  </motion.button>
+                </div>
+              );
+            })}
+          </div>
+
+          <AnimatePresence>
+            {taskState >= 2 && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-8 border-t border-border-forest-light pt-6 overflow-hidden">
+                <h4 className="font-sans text-sm font-semibold text-cream uppercase tracking-wider mb-4">Evidence & Field Notes</h4>
+                <textarea rows={3} placeholder="Enter field observations here..." className="w-full bg-forest-elevated border border-border-forest-light p-3 rounded text-sm text-cream placeholder-muted outline-none focus:border-lime transition-colors mb-4 resize-none" />
+                <div className="border-2 border-dashed border-border-forest-light rounded h-24 flex flex-col items-center justify-center text-muted">
+                  <Upload className="h-5 w-5 mb-1" />
+                  <span className="text-xs">Tap to capture photo/video</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      ) : (
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="m-4 flex flex-col items-center justify-center p-8 text-center bg-health-green/10 border border-health-green/30 rounded py-16">
+          <div className="h-20 w-20 rounded-full bg-health-green flex items-center justify-center text-forest-primary mb-6">
+            <CheckCircle2 className="h-10 w-10" />
+          </div>
+          <h2 className="font-display text-3xl text-health-green mb-2">Issue Resolved</h2>
+          <p className="font-sans text-sm text-cream mb-8">TKN-2024-847 closed. Report sent to Command.</p>
+          <AnimatedCTA variant="primary" className="w-full" onClick={() => setTaskState(0)}>View Next Assignment</AnimatedCTA>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+// ─── OFFICER CHAT ──────────────────────────────────────────────────────────────
+type Msg = { id: number; from: "me" | "citizen" | "command"; text: string; time: string };
+
+const OfficerChatTab = () => {
+  const threads = [
+    { id: "TKN-2024-847", name: "Alex M. (Citizen)", avatar: "AM", last: "Yes, south gate facing N.R. road.", time: "12:27 PM", unread: 1, active: true },
+    { id: "CMD", name: "Command Center", avatar: "CC", last: "Proceed to Zone 4A. Take readings.", time: "12:20 PM", unread: 0, active: true },
+  ];
+
+  const chatData: Record<string, Msg[]> = {
+    "TKN-2024-847": [
+      { id: 1, from: "me",     text: "Hello, I've received your complaint. Heading to Zone 4A now.",              time: "12:22 PM" },
+      { id: 2, from: "citizen", text: "Thank you! The smoke is still heavy near the south gate.",                  time: "12:24 PM" },
+      { id: 3, from: "me",     text: "Noted. Can you confirm the exact gate — is it facing the main road?",       time: "12:25 PM" },
+      { id: 4, from: "citizen", text: "Yes, south gate facing N.R. road. Large chimney stack visible.",             time: "12:27 PM" },
+    ],
+    "CMD": [
+      { id: 1, from: "command", text: "Officer Jackson, complaint TKN-847 assigned. Proceed to Zone 4A immediately.", time: "12:20 PM" },
+      { id: 2, from: "me",     text: "Acknowledged. En route.",                                                      time: "12:21 PM" },
+      { id: 3, from: "command", text: "Take PM2.5 and NOx readings on arrival. Report back in 15 min.",               time: "12:22 PM" },
+    ],
+  };
+
+  const [activeThread, setActiveThread] = useState("TKN-2024-847");
+  const [inputVal, setInputVal] = useState("");
+  const [messages, setMessages] = useState<Record<string, Msg[]>>(chatData);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const activeT = threads.find(t => t.id === activeThread)!;
+  const msgs = messages[activeThread] || [];
+
+  const sendMsg = () => {
+    if (!inputVal.trim()) return;
+    const newMsg: Msg = { id: Date.now(), from: "me", text: inputVal.trim(), time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
+    setMessages(prev => ({ ...prev, [activeThread]: [...(prev[activeThread] || []), newMsg] }));
+    setInputVal("");
+    setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  };
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, activeThread]);
+
+  return (
+    <div className="pb-16 h-[calc(100vh-72px)] flex flex-col">
+      <MobileHeader title="Messages" />
+
+      {/* Thread switcher */}
+      <div className="flex border-b border-border-forest-light bg-forest-secondary shrink-0">
+        {threads.map(t => (
+          <button key={t.id} onClick={() => setActiveThread(t.id)}
+            className={cn("flex-1 flex flex-col items-center gap-1 py-3 px-3 border-b-2 transition-colors relative",
+              activeThread === t.id ? "border-accent-teal text-cream bg-forest-primary/40" : "border-transparent text-muted hover:text-cream"
+            )}>
+            <span className="font-sans text-xs font-semibold truncate max-w-[100px]">{t.name}</span>
+            <span className="font-data text-[10px] text-lime">{t.id}</span>
+            {t.unread > 0 && <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-health-red flex items-center justify-center font-data text-[9px] text-white">{t.unread}</div>}
+          </button>
+        ))}
+      </div>
+
+      {/* Chat header mini */}
+      <div className="px-4 py-3 bg-forest-card border-b border-border-forest flex items-center gap-3 shrink-0">
+        <div className="w-8 h-8 rounded-full bg-accent-gold/20 border border-accent-gold flex items-center justify-center text-accent-gold font-bold text-xs">{activeT.avatar}</div>
+        <div>
+          <span className="font-sans text-sm font-semibold text-cream">{activeT.name}</span>
+          <div className="flex items-center gap-2">
+            {activeT.active && <div className="w-1.5 h-1.5 rounded-full bg-health-green animate-pulse" />}
+            <span className="font-data text-[10px] text-muted">{activeT.active ? "Online" : "Offline"}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {msgs.map(msg => (
+          <div key={msg.id} className={cn("flex gap-2 max-w-[88%]", msg.from === "me" ? "ml-auto flex-row-reverse" : "")}>
+            {msg.from !== "me" && (
+              <div className="w-7 h-7 rounded-full bg-accent-gold/20 border border-accent-gold flex items-center justify-center text-accent-gold font-bold text-[10px] shrink-0 self-end">{activeT.avatar}</div>
+            )}
+            <div className={cn("rounded p-3 font-sans text-sm leading-relaxed",
+              msg.from === "me" ? "bg-accent-teal text-forest-primary rounded-br-none" : msg.from === "command" ? "bg-accent-gold/20 border border-accent-gold/30 text-cream rounded-bl-none" : "bg-forest-card border border-border-forest-light text-cream rounded-bl-none"
+            )}>
+              {msg.from === "command" && <div className="font-data text-[9px] font-bold text-accent-gold uppercase tracking-wider mb-1">Command Center</div>}
+              <p>{msg.text}</p>
+              <div className={cn("text-[10px] mt-1 font-data flex items-center gap-1", msg.from === "me" ? "justify-end text-forest-primary/60" : "text-muted")}>
+                {msg.time}
+                {msg.from === "me" && <CheckCheck className="h-3 w-3" />}
+              </div>
+            </div>
+          </div>
+        ))}
+        <div ref={endRef} />
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-border-forest-light bg-forest-secondary px-4 py-3 shrink-0">
+        <div className="flex gap-2 items-end">
+          <textarea rows={1} value={inputVal} onChange={e => setInputVal(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); } }}
+            placeholder="Type message… (Enter to send)"
+            className="flex-1 bg-forest-elevated border border-border-forest-light rounded p-3 font-sans text-sm text-cream placeholder:text-muted outline-none focus:border-lime transition-colors resize-none min-h-[44px]" />
+          <button onClick={sendMsg} className="h-11 w-11 bg-accent-teal rounded flex items-center justify-center hover:brightness-110 transition-all shrink-0">
+            <Send className="h-4 w-4 text-forest-primary" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── PROFILE TAB ───────────────────────────────────────────────────────────────
+const ProfileTab = () => (
+  <div className="pb-24">
+    <MobileHeader title="Profile" />
+    <div className="p-4 space-y-4">
+      {/* Avatar */}
+      <div className="bg-forest-card border border-border-forest-light rounded p-6 flex flex-col items-center gap-4">
+        <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center text-accent-gold font-bold text-2xl">DJ</div>
+        <div className="text-center">
+          <h2 className="font-sans font-bold text-cream text-lg">Officer D. Jackson</h2>
+          <p className="font-data text-sm text-lime mt-0.5">BADGE-092</p>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <div className="w-2 h-2 rounded-full bg-health-green animate-pulse" />
+            <span className="font-sans text-xs text-health-green">On Duty</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[["3", "Active Tasks"], ["12", "Completed Today"], ["98%", "Resolution Rate"]].map(([v,l]) => (
+          <div key={l} className="bg-forest-card border border-border-forest-light rounded p-4 text-center">
+            <div className="font-data text-2xl font-bold text-lime">{v}</div>
+            <div className="font-sans text-[10px] text-muted uppercase tracking-wider mt-1">{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Details */}
+      <div className="bg-forest-card border border-border-forest-light rounded overflow-hidden">
+        {[["Zone", "Zone 4A — Central"], ["Department", "Field Operations"], ["Shift", "Morning 06:00–14:00"], ["Equipment", "Kit-B, N95, Meter"]].map(([l,v]) => (
+          <div key={l} className="flex justify-between items-center px-5 py-4 border-b border-border-forest-light last:border-0">
+            <span className="font-sans text-sm text-muted">{l}</span>
+            <span className="font-sans text-sm text-cream">{v}</span>
+          </div>
+        ))}
+      </div>
+
+      <AnimatedCTA variant="ghost" className="w-full border-health-red text-health-red hover:bg-health-red/10">Go Off Duty</AnimatedCTA>
+    </div>
+  </div>
+);
+
+// ─── MAIN ──────────────────────────────────────────────────────────────────────
+export const OfficerDashboard = () => (
+  <>
+    <div className="min-h-screen bg-forest-primary font-sans pt-[72px] max-w-[480px] mx-auto relative">
+      <Routes>
+        <Route path="/"         element={<ActiveTaskTab />} />
+        <Route path="/messages" element={<OfficerChatTab />} />
+        <Route path="/profile"  element={<ProfileTab />} />
+        <Route path="*"         element={<div className="p-4 pt-16 font-sans text-muted text-sm">Under development.</div>} />
+      </Routes>
+    </div>
+    <BottomNav />
+  </>
+);
