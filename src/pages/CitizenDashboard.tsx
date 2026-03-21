@@ -3,11 +3,55 @@ import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, Map as MapIcon, FileEdit, Archive, MessageSquare, Settings,
-  AlertTriangle, Upload, User, Send, CheckCheck, Clock, CheckCircle2
+  AlertTriangle, Upload, User, Send, CheckCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StatusPill } from "@/components/shared/StatusPill";
+import { StatusPill, type StatusLevel } from "@/components/shared/StatusPill";
 import { AnimatedCTA } from "@/components/shared/AnimatedCTA";
+import { createIssue, getOrCreateDemoUser, listUserIssues, type Issue } from "@/lib/api";
+
+const mapLink = "https://maps.app.goo.gl/2z7hszL1FxzcBYK29";
+const mapEmbedSrc = "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d20366.907119904292!2d77.22196297614038!3d28.61683336618423!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1773990601088!5m2!1sen!2sin";
+
+const categoryOptions = [
+  { label: "Waste Burning", value: "waste-burning" },
+  { label: "Construction Dust", value: "construction-dust" },
+  { label: "Industrial Smoke", value: "industrial-smoke" },
+  { label: "Garbage Dumping", value: "garbage-dumping" },
+  { label: "Other", value: "other" },
+];
+
+const priorityToPill = {
+  high: "hazardous",
+  medium: "moderate",
+  low: "good",
+} as const;
+
+const statusToPill = {
+  pending: "info",
+  assigned: "moderate",
+  in_progress: "moderate",
+  resolved: "good",
+  closed: "good",
+} as const;
+
+function statusLabel(status: Issue["status"]) {
+  return status.replace(/_/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+}
+
+function formatToken(id: string) {
+  return `TKN-${id.slice(-6).toUpperCase()}`;
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "Just now";
+  return new Date(value).toLocaleString([], {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 // ─── Sparkline ─────────────────────────────────────────────────────────────────
 const Sparkline = ({ data, color = "#C6E47A" }: { data: number[]; color?: string }) => {
@@ -55,7 +99,7 @@ const Sidebar = () => {
     { name: "Settings",       path: "/citizen/settings",    icon: Settings },
   ];
   return (
-    <div className="fixed left-0 top-0 h-full w-[240px] bg-forest-secondary border-r border-border-forest-light z-40 pt-[72px] flex flex-col">
+    <div className="fixed left-0 top-0 h-full w-60 bg-forest-secondary border-r border-border-forest-light z-40 pt-18 flex flex-col">
       <div className="px-5 py-5 border-b border-border-forest">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-10 w-10 rounded-full bg-accent-teal/20 border border-accent-teal flex items-center justify-center">
@@ -75,7 +119,7 @@ const Sidebar = () => {
           return (
             <Link key={item.name} to={item.path}
               className={cn("flex items-center gap-3 px-4 py-3 rounded font-sans text-[14px] transition-all duration-150 border-l-[3px]",
-                isActive ? "bg-accent-teal/10 border-accent-teal text-accent-teal" : "border-transparent text-muted hover:bg-white/[0.04] hover:text-cream"
+                isActive ? "bg-accent-teal/10 border-accent-teal text-accent-teal" : "border-transparent text-muted hover:bg-white/4 hover:text-cream"
               )}>
               <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{item.name}</span>
@@ -153,13 +197,15 @@ const OverviewTab = () => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="col-span-1 lg:col-span-2">
         <h3 className="font-sans text-[18px] font-semibold text-cream mb-4">Live Pollution Heatmap</h3>
-        <div className="w-full h-[380px] bg-forest-secondary border border-border-forest rounded relative overflow-hidden flex items-center justify-center">
-          <div className="absolute top-8 left-16 w-48 h-48 rounded-full" style={{ background: "radial-gradient(circle, rgba(224,82,82,0.3) 0%, transparent 70%)" }} />
-          <div className="absolute bottom-16 right-20 w-36 h-36 rounded-full" style={{ background: "radial-gradient(circle, rgba(232,168,56,0.25) 0%, transparent 70%)" }} />
-          <div className="absolute top-24 right-32 w-28 h-28 rounded-full" style={{ background: "radial-gradient(circle, rgba(76,175,114,0.3) 0%, transparent 70%)" }} />
-          {[{x:"30%",y:"35%",c:"#E05252"},{x:"65%",y:"60%",c:"#E8A838"},{x:"72%",y:"25%",c:"#4CAF72"}].map((p,i) => (
-            <div key={i} className="absolute" style={{ left: p.x, top: p.y }}><div className="w-3 h-3 rounded-full border-2 border-white/80 shadow-md" style={{ background: p.c }} /></div>
-          ))}
+        <div className="w-full h-95 bg-forest-secondary border border-border-forest rounded relative overflow-hidden flex items-center justify-center">
+          <iframe
+            title="Citizen Overview Map"
+            src={mapEmbedSrc}
+            className="absolute inset-0 h-full w-full"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+          <div className="absolute inset-0 bg-forest-primary/10 pointer-events-none" />
           <div className="z-10 bg-forest-card/80 backdrop-blur border border-white/10 p-3 rounded text-center">
             <p className="font-data text-lime text-xs">Interactive Map Active</p>
             <p className="font-sans text-[10px] text-muted mt-1">3 active heat zones</p>
@@ -172,18 +218,18 @@ const OverviewTab = () => (
           <Link to="/citizen/complaints" className="text-accent-teal text-xs uppercase tracking-wider font-semibold">View All →</Link>
         </div>
         <div className="space-y-3">
-          {[
+          {([
             { id: "TKN-2024-847", type: "Industrial Smoke", status: "moderate", statusLabel: "In Progress", time: "10 mins ago" },
             { id: "TKN-2024-846", type: "Construction Dust", status: "info", statusLabel: "Assigned", time: "2 hrs ago" },
             { id: "TKN-2024-842", type: "Garbage Dumping", status: "good", statusLabel: "Resolved", time: "Yesterday" },
-          ].map((ticket, i) => (
+          ] as Array<{ id: string; type: string; status: StatusLevel; statusLabel: string; time: string }>).map((ticket, i) => (
             <div key={i} className="p-4 bg-forest-card border border-border-forest rounded hover:border-accent-teal/50 transition-colors cursor-pointer">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-data text-xs font-bold text-lime">{ticket.id}</span>
                 <span className="text-[11px] text-muted font-sans">{ticket.time}</span>
               </div>
               <p className="font-sans text-cream text-[14px] font-semibold mb-3">{ticket.type}</p>
-              <StatusPill label={ticket.statusLabel} level={ticket.status as any} />
+              <StatusPill label={ticket.statusLabel} level={ticket.status} />
             </div>
           ))}
         </div>
@@ -194,132 +240,78 @@ const OverviewTab = () => (
 
 // ─── MY COMPLAINTS TAB ─────────────────────────────────────────────────────────
 const ComplaintsTab = () => {
-  const complaints = [
-    {
-      id: "TKN-2024-847", type: "Industrial Smoke", zone: "Zone 4A, Sector 9",
-      submitted: "Today, 12:04 PM", priority: "hazardous",
-      timeline: [
-        { label: "Submitted", time: "12:04 PM", done: true, icon: <FileEdit className="h-3.5 w-3.5" /> },
-        { label: "Under Review", time: "12:07 PM", done: true, icon: <Clock className="h-3.5 w-3.5" /> },
-        { label: "Officer Assigned", time: "12:22 PM", done: true, icon: <User className="h-3.5 w-3.5" /> },
-        { label: "En Route", time: "12:31 PM", done: false, icon: <MapIcon className="h-3.5 w-3.5" /> },
-        { label: "Resolved", time: "—", done: false, icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-      ],
-      officer: "Officer Raj Kumar · Badge 092",
-    },
-    {
-      id: "TKN-2024-846", type: "Construction Dust", zone: "Zone 4A, Main Rd",
-      submitted: "Today, 09:18 AM", priority: "moderate",
-      timeline: [
-        { label: "Submitted", time: "09:18 AM", done: true, icon: <FileEdit className="h-3.5 w-3.5" /> },
-        { label: "Under Review", time: "09:21 AM", done: true, icon: <Clock className="h-3.5 w-3.5" /> },
-        { label: "Officer Assigned", time: "09:40 AM", done: true, icon: <User className="h-3.5 w-3.5" /> },
-        { label: "En Route", time: "09:52 AM", done: true, icon: <MapIcon className="h-3.5 w-3.5" /> },
-        { label: "Resolved", time: "10:30 AM", done: true, icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-      ],
-      officer: "Officer A. Smith · Badge 114",
-    },
-  ];
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [open, setOpen] = useState<string | null>(complaints[0].id);
+  useEffect(() => {
+    let mounted = true;
+
+    const loadComplaints = async () => {
+      try {
+        const citizen = await getOrCreateDemoUser("citizen");
+        const data = await listUserIssues(citizen._id);
+        if (!mounted) return;
+        const sorted = [...data].sort((a, b) => {
+          const aTime = new Date(a.createdAt || 0).getTime();
+          const bTime = new Date(b.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+        setIssues(sorted);
+      } catch (err) {
+        if (!mounted) return;
+        setError(err instanceof Error ? err.message : "Failed to load complaints.");
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    loadComplaints();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 pb-32 max-w-4xl">
       <h1 className="font-display text-3xl text-cream mb-2">My <em style={{ fontStyle: "italic", color: "#3DBFAD" }}>Complaints</em></h1>
-      <p className="font-sans text-sm text-muted mb-8">Track every report you've submitted — from submission to resolution.</p>
+      <p className="font-sans text-sm text-muted mb-8">Live complaints synced from your backend API.</p>
+
+      {isLoading && <div className="font-sans text-sm text-muted">Loading complaints...</div>}
+      {error && <div className="font-sans text-sm text-health-red">{error}</div>}
+
+      {!isLoading && !error && issues.length === 0 && (
+        <div className="bg-forest-card border border-border-forest-light rounded p-6 font-sans text-sm text-muted">
+          No complaints found yet. Submit your first issue from Report Issue.
+        </div>
+      )}
 
       <div className="space-y-4">
-        {complaints.map((c) => {
-          const activeStep = c.timeline.filter(t => t.done).length - 1;
-          const isOpen = open === c.id;
-          const pColor = c.priority === "hazardous" ? "#E05252" : c.priority === "moderate" ? "#E8A838" : "#4CAF72";
+        {issues.map((issue) => {
+          const location = [issue.location?.address, issue.location?.city].filter(Boolean).join(", ") || "Location not provided";
+          const issuePriority = issue.priority ?? "medium";
+          const assignedOfficer =
+            typeof issue.assignedTo === "object" && issue.assignedTo !== null && "name" in issue.assignedTo
+              ? issue.assignedTo.name
+              : "Not assigned yet";
 
           return (
-            <div key={c.id} className="bg-forest-card border border-border-forest-light rounded overflow-hidden" style={{ borderLeft: `4px solid ${pColor}` }}>
-              {/* Header row */}
-              <button className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors text-left" onClick={() => setOpen(isOpen ? null : c.id)}>
-                <div className="flex items-center gap-4">
-                  <div>
-                    <div className="font-data text-sm font-bold text-lime">{c.id}</div>
-                    <div className="font-sans text-[15px] font-semibold text-cream mt-0.5">{c.type}</div>
-                    <div className="font-sans text-xs text-muted mt-1">📍 {c.zone} · {c.submitted}</div>
-                  </div>
+            <div key={issue._id} className="bg-forest-card border border-border-forest-light rounded p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="font-data text-sm font-bold text-lime">{formatToken(issue._id)}</div>
+                  <div className="font-sans text-[15px] font-semibold text-cream mt-0.5">{issue.title || issue.category || "Pollution Issue"}</div>
+                  <div className="font-sans text-xs text-muted mt-1">{location} · {formatDateTime(issue.createdAt)}</div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <StatusPill label={c.timeline.filter(t => t.done).length === c.timeline.length ? "Resolved" : "In Progress"} level={c.timeline.filter(t => t.done).length === c.timeline.length ? "good" : "moderate"} />
-                  <span className="text-muted text-sm">{isOpen ? "▲" : "▼"}</span>
-                </div>
-              </button>
+                <StatusPill label={statusLabel(issue.status)} level={statusToPill[issue.status]} />
+              </div>
 
-              {/* Timeline detail */}
-              <AnimatePresence>
-                {isOpen && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                    <div className="px-5 pb-6 border-t border-border-forest-light pt-5">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Timeline */}
-                        <div>
-                          <h4 className="font-sans text-xs font-semibold uppercase tracking-[0.2em] text-muted mb-5">Resolution Timeline</h4>
-                          <div className="relative pl-6 space-y-0">
-                            {/* Connecting vertical line */}
-                            <div className="absolute left-[11px] top-3 bottom-3 w-px bg-border-forest-light" />
-                            {c.timeline.map((step, si) => (
-                              <div key={si} className="relative flex items-start gap-4 pb-6 last:pb-0">
-                                {/* Step dot */}
-                                <div className={cn("absolute -left-6 w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 z-10",
-                                  step.done
-                                    ? si === activeStep
-                                      ? "bg-accent-teal border-accent-teal text-forest-primary"
-                                      : "bg-health-green border-health-green text-forest-primary"
-                                    : "bg-forest-elevated border-border-forest-light text-muted"
-                                )}>
-                                  {step.done ? <CheckCheck className="h-3 w-3" /> : step.icon}
-                                </div>
-                                <div className="pl-2">
-                                  <div className={cn("font-sans text-sm font-semibold", step.done ? "text-cream" : "text-muted")}>{step.label}</div>
-                                  <div className="font-data text-[11px] text-muted mt-0.5">{step.time}</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+              <p className="font-sans text-sm text-muted mt-3 leading-relaxed">{issue.description || "No description provided."}</p>
 
-                        {/* Details + action */}
-                        <div className="space-y-5">
-                          <div className="bg-forest-elevated border border-border-forest-light rounded p-4">
-                            <div className="font-sans text-xs font-semibold uppercase tracking-[0.15em] text-muted mb-2">Assigned Officer</div>
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-accent-gold/20 border border-accent-gold flex items-center justify-center text-accent-gold font-bold text-sm">RK</div>
-                              <div>
-                                <div className="font-sans text-sm font-semibold text-cream">{c.officer.split(" · ")[0]}</div>
-                                <div className="font-data text-[11px] text-muted">{c.officer.split(" · ")[1]}</div>
-                              </div>
-                              {c.timeline[c.timeline.length - 1].done || (
-                                <Link to="/citizen/messages" className="ml-auto">
-                                  <AnimatedCTA variant="ghost" size="sm" className="text-xs border-accent-teal text-accent-teal hover:bg-accent-teal">
-                                    <MessageSquare className="h-3.5 w-3.5 mr-2" /> Chat
-                                  </AnimatedCTA>
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="bg-forest-elevated border border-border-forest-light rounded p-4">
-                            <div className="font-sans text-xs font-semibold uppercase tracking-[0.15em] text-muted mb-2">Progress</div>
-                            <div className="flex justify-between font-data text-xs mb-2">
-                              <span className="text-muted">{c.timeline.filter(t => t.done).length}/{c.timeline.length} steps</span>
-                              <span className="text-lime">{Math.round((c.timeline.filter(t => t.done).length / c.timeline.length) * 100)}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-forest-primary rounded-full overflow-hidden">
-                              <motion.div className="h-full bg-health-green rounded-full" initial={{ width: 0 }} animate={{ width: `${(c.timeline.filter(t => t.done).length / c.timeline.length) * 100}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <div className="mt-4 flex items-center justify-between border-t border-border-forest-light pt-4">
+                <div className="font-sans text-xs text-muted">Assigned: <span className="text-cream">{assignedOfficer}</span></div>
+                <StatusPill label={issuePriority.toUpperCase()} level={priorityToPill[issuePriority]} />
+              </div>
             </div>
           );
         })}
@@ -365,7 +357,7 @@ const MessagesTab = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[calc(100vh-72px)] flex overflow-hidden">
 
       {/* Thread list */}
-      <div className="w-[280px] shrink-0 border-r border-border-forest-light bg-forest-secondary flex flex-col">
+      <div className="w-70 shrink-0 border-r border-border-forest-light bg-forest-secondary flex flex-col">
         <div className="p-5 border-b border-border-forest">
           <h2 className="font-display text-2xl text-cream">Messages</h2>
           <p className="font-sans text-xs text-muted mt-1">Complaint communications</p>
@@ -449,7 +441,7 @@ const MessagesTab = () => {
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); } }}
               placeholder="Type a message… (Enter to send)"
-              className="flex-1 bg-forest-elevated border border-border-forest-light rounded p-3.5 font-sans text-sm text-cream placeholder:text-muted outline-none focus:border-accent-teal transition-colors resize-none min-h-[48px] max-h-28"
+              className="flex-1 bg-forest-elevated border border-border-forest-light rounded p-3.5 font-sans text-sm text-cream placeholder:text-muted outline-none focus:border-accent-teal transition-colors resize-none min-h-12 max-h-28"
             />
             <button onClick={sendMsg}
               className="h-12 w-12 bg-accent-teal rounded flex items-center justify-center hover:brightness-110 transition-all shrink-0">
@@ -463,40 +455,154 @@ const MessagesTab = () => {
   );
 };
 
+// ─── AIR MAP TAB ──────────────────────────────────────────────────────────────
+const AirMapTab = () => (
+  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 pb-32">
+    <div className="mb-5 flex items-center justify-between">
+      <div>
+        <h1 className="font-display text-3xl text-cream">Air <em style={{ fontStyle: "italic", color: "#3DBFAD" }}>Map</em></h1>
+        <p className="font-sans text-sm text-muted mt-1">Live city map for pollution reporting and tracking.</p>
+      </div>
+      <a
+        href={mapLink}
+        target="_blank"
+        rel="noreferrer"
+        className="font-data text-xs uppercase tracking-wider text-accent-teal border border-accent-teal/40 bg-accent-teal/10 px-3 py-2 rounded"
+      >
+        Open in Maps
+      </a>
+    </div>
+    <div className="w-full h-[70vh] min-h-115 bg-forest-secondary border border-border-forest rounded overflow-hidden">
+      <iframe
+        title="Citizen Air Map"
+        src={mapEmbedSrc}
+        className="w-full h-full"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+    </div>
+  </motion.div>
+);
+
 // ─── REPORT TAB ────────────────────────────────────────────────────────────────
 const ReportTab = () => {
   const [success, setSuccess] = useState(false);
-  const categories = ["🔥 Waste Burning", "🏗️ Construction Dust", "🏭 Industrial Smoke", "🗑️ Garbage Dumping", "❓ Other"];
-  const [selectedCat, setSelectedCat] = useState(categories[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [ticketId, setTicketId] = useState("");
+  const [selectedCat, setSelectedCat] = useState(categoryOptions[0].value);
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [description, setDescription] = useState("");
+
+  const submitReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    try {
+      setIsSubmitting(true);
+      const citizen = await getOrCreateDemoUser("citizen");
+      const categoryLabel = categoryOptions.find((cat) => cat.value === selectedCat)?.label || "Other";
+      const created = await createIssue({
+        title: `${categoryLabel} reported`,
+        description,
+        category: categoryLabel,
+        department: "environment",
+        priority: "medium",
+        location: {
+          address,
+          city,
+          pincode,
+        },
+        createdBy: citizen._id,
+      });
+
+      setTicketId(created._id);
+      setSuccess(true);
+      setDescription("");
+      setAddress("");
+      setCity("");
+      setPincode("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit report.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 max-w-3xl pb-32">
       <h2 className="font-display text-4xl text-cream mb-2">Report a <em style={{ fontStyle: "italic", color: "#3DBFAD" }}>pollution</em> issue</h2>
       <p className="font-sans text-muted mb-8">Your report reaches the command center in real time. Expected officer response: &lt; 5 min.</p>
 
-      <form className="space-y-8" onSubmit={(e) => { e.preventDefault(); setSuccess(true); }}>
+      <form className="space-y-8" onSubmit={submitReport}>
         <div className="space-y-3">
           <label className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Location</label>
           <div className="w-full h-48 bg-forest-secondary border border-border-forest-light rounded relative flex items-center justify-center overflow-hidden">
-            <div className="absolute top-8 left-12 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(76,175,114,0.15) 0%, transparent 70%)" }} />
-            <AnimatedCTA variant="ghost" size="sm" type="button" className="z-10 bg-forest-card/60 backdrop-blur text-xs">📍 Drop Pin on Map</AnimatedCTA>
+            <iframe
+              title="Report Location Map"
+              src={mapEmbedSrc}
+              className="absolute inset-0 h-full w-full"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+            <div className="absolute inset-0 bg-forest-primary/10 pointer-events-none" />
+            <AnimatedCTA
+              variant="ghost"
+              size="sm"
+              type="button"
+              className="z-10 bg-forest-card/60 backdrop-blur text-xs"
+              onClick={() => window.open(mapLink, "_blank", "noopener,noreferrer")}
+            >
+              📍 Drop Pin on Map
+            </AnimatedCTA>
           </div>
-          <input type="text" placeholder="Or search address manually..." className="w-full bg-forest-elevated border border-border-forest-light rounded h-[52px] px-4 font-sans text-sm text-cream focus:border-health-green outline-none transition-colors placeholder:text-muted" />
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            type="text"
+            placeholder="Address"
+            className="w-full bg-forest-elevated border border-border-forest-light rounded h-13 px-4 font-sans text-sm text-cream focus:border-health-green outline-none transition-colors placeholder:text-muted"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              type="text"
+              placeholder="City"
+              className="w-full bg-forest-elevated border border-border-forest-light rounded h-13 px-4 font-sans text-sm text-cream focus:border-health-green outline-none transition-colors placeholder:text-muted"
+            />
+            <input
+              value={pincode}
+              onChange={(e) => setPincode(e.target.value)}
+              type="text"
+              placeholder="Pincode"
+              className="w-full bg-forest-elevated border border-border-forest-light rounded h-13 px-4 font-sans text-sm text-cream focus:border-health-green outline-none transition-colors placeholder:text-muted"
+            />
+          </div>
         </div>
         <div className="space-y-3">
           <label className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Issue Category</label>
           <div className="flex flex-wrap gap-3">
-            {categories.map(cat => (
-              <button key={cat} type="button" onClick={() => setSelectedCat(cat)}
+            {categoryOptions.map((cat) => (
+              <button key={cat.value} type="button" onClick={() => setSelectedCat(cat.value)}
                 className={cn("px-4 py-2 rounded-full font-sans text-sm border transition-all duration-200",
-                  cat === selectedCat ? "bg-health-green/15 border-health-green text-lime" : "bg-forest-elevated border-border-forest-light text-muted hover:border-health-green/50"
-                )}>{cat}</button>
+                  cat.value === selectedCat ? "bg-health-green/15 border-health-green text-lime" : "bg-forest-elevated border-border-forest-light text-muted hover:border-health-green/50"
+                )}>{cat.label}</button>
             ))}
           </div>
         </div>
         <div className="space-y-3">
           <label className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Detailed Description</label>
-          <textarea rows={4} placeholder="Describe what you observed. Odor, volume, potential source..." className="w-full bg-forest-elevated border border-border-forest-light rounded p-4 font-sans text-sm text-cream focus:border-health-green outline-none transition-colors resize-none placeholder:text-muted" />
+          <textarea
+            required
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Describe what you observed. Odor, volume, potential source..."
+            className="w-full bg-forest-elevated border border-border-forest-light rounded p-4 font-sans text-sm text-cream focus:border-health-green outline-none transition-colors resize-none placeholder:text-muted"
+          />
         </div>
         <div className="space-y-3">
           <label className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Evidence Upload</label>
@@ -506,7 +612,10 @@ const ReportTab = () => {
             <p className="font-sans text-xs text-muted/50 mt-1">JPG, PNG, MP4 up to 50MB</p>
           </div>
         </div>
-        <AnimatedCTA variant="primary" className="w-full h-14" type="submit">Submit Report →</AnimatedCTA>
+        {error && <p className="font-sans text-sm text-health-red">{error}</p>}
+        <AnimatedCTA variant="primary" className="w-full h-14" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Submitting..." : "Submit Report →"}
+        </AnimatedCTA>
       </form>
 
       <AnimatePresence>
@@ -520,7 +629,7 @@ const ReportTab = () => {
               <h3 className="font-display text-3xl text-cream mb-2">Report Submitted</h3>
               <p className="font-sans text-muted mb-8 text-sm leading-relaxed">An officer will be dispatched within 5 min. Track your complaint with:</p>
               <div className="bg-forest-secondary border border-border-forest rounded py-4 px-6 mb-8 flex items-center justify-center">
-                <code className="font-data text-2xl font-bold text-lime tracking-wide">TKN-2024-00848</code>
+                <code className="font-data text-2xl font-bold text-lime tracking-wide">{formatToken(ticketId)}</code>
               </div>
               <div className="flex gap-3">
                 <AnimatedCTA variant="teal" className="flex-1" onClick={() => setSuccess(false)}>Track Complaint</AnimatedCTA>
@@ -538,6 +647,7 @@ const ReportTab = () => {
 const SettingsTab = () => {
   const [notifs, setNotifs] = useState({ aqi: true, complaints: true, officer: true, weekly: false });
   const [zone, setZone] = useState("Zone 4A — Mumbai Central");
+  const [saved, setSaved] = useState(false);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 max-w-2xl pb-32">
@@ -586,7 +696,7 @@ const SettingsTab = () => {
             { key: "officer", label: "Officer Messages", desc: "New messages from assigned field officers" },
             { key: "weekly", label: "Weekly Air Quality Report", desc: "Weekly digest of pollution trends in your area" },
           ].map((setting) => (
-            <div key={setting.key} className="flex items-center justify-between px-6 py-4 border-b border-border-forest-light last:border-0 hover:bg-white/[0.02] transition-colors">
+            <div key={setting.key} className="flex items-center justify-between px-6 py-4 border-b border-border-forest-light last:border-0 hover:bg-white/2 transition-colors">
               <div>
                 <p className="font-sans text-sm font-semibold text-cream">{setting.label}</p>
                 <p className="font-sans text-xs text-muted mt-0.5">{setting.desc}</p>
@@ -604,23 +714,34 @@ const SettingsTab = () => {
         </div>
       </section>
 
-      <AnimatedCTA variant="primary" className="w-full h-12">Save Changes</AnimatedCTA>
+      {saved && <p className="font-sans text-sm text-health-green mb-3">Settings saved successfully.</p>}
+      <AnimatedCTA
+        variant="primary"
+        className="w-full h-12"
+        onClick={() => {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 1800);
+        }}
+      >
+        Save Changes
+      </AnimatedCTA>
     </motion.div>
   );
 };
 
 // ─── Main layout ───────────────────────────────────────────────────────────────
 export const CitizenDashboard = () => (
-  <div className="min-h-screen bg-forest-primary font-sans pt-[72px]">
+  <div className="min-h-screen bg-forest-primary font-sans pt-18">
     <Sidebar />
-    <div className="ml-[240px] min-h-screen">
+    <div className="ml-60 min-h-screen">
       <Routes>
         <Route path="/"           element={<OverviewTab />} />
+        <Route path="/map"        element={<AirMapTab />} />
         <Route path="/report"     element={<ReportTab />} />
         <Route path="/complaints" element={<ComplaintsTab />} />
         <Route path="/messages"   element={<MessagesTab />} />
         <Route path="/settings"   element={<SettingsTab />} />
-        <Route path="*"           element={<div className="p-8 font-sans text-muted text-sm">This section is under active development.</div>} />
+        <Route path="*"           element={<OverviewTab />} />
       </Routes>
     </div>
   </div>

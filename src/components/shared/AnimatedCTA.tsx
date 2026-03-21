@@ -9,7 +9,7 @@ interface AnimatedCTAProps extends HTMLMotionProps<"button"> {
 }
 
 export const AnimatedCTA = React.forwardRef<HTMLButtonElement, AnimatedCTAProps>(
-  ({ className, variant = "primary", size = "default", children, ...props }, ref) => {
+  ({ className, variant = "primary", size = "default", children, type = "button", ...props }, ref) => {
     const variants = {
       primary: "bg-health-green text-forest-primary hover:brightness-110 border border-transparent",
       ghost:   "bg-transparent text-health-green border border-health-green hover:bg-health-green hover:text-forest-primary",
@@ -39,6 +39,7 @@ export const AnimatedCTA = React.forwardRef<HTMLButtonElement, AnimatedCTAProps>
           sizes[size],
           className
         )}
+        type={type}
         {...props}
       >
         {children}

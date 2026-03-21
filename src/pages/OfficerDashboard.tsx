@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { StatusPill } from "@/components/shared/StatusPill";
 import { AnimatedCTA } from "@/components/shared/AnimatedCTA";
+import { createIssueUpdate, getOrCreateDemoUser, listIssues, listUsers, updateIssueStatus, type Issue, type User as ApiUser } from "@/lib/api";
 
 // ─── Bottom Nav ────────────────────────────────────────────────────────────────
 const BottomNav = () => {
@@ -38,8 +39,8 @@ const BottomNav = () => {
 };
 
 // ─── Mobile Header ─────────────────────────────────────────────────────────────
-const MobileHeader = ({ title }: { title?: string }) => (
-  <header className="h-14 bg-forest-secondary flex items-center justify-between px-4 border-b border-border-forest-light sticky top-[72px] z-40">
+const MobileHeader = ({ title, officerName }: { title?: string; officerName?: string }) => (
+  <header className="h-14 bg-forest-secondary flex items-center justify-between px-4 border-b border-border-forest-light sticky top-18 z-40">
     <div className="flex items-center gap-1">
       <span className="font-display italic text-cream text-lg">P</span>
       <span className="h-1 w-1 bg-lime rounded-full" />
@@ -47,14 +48,17 @@ const MobileHeader = ({ title }: { title?: string }) => (
     </div>
     {title && <span className="font-sans text-sm font-semibold text-muted uppercase tracking-wider">{title}</span>}
     <div className="flex items-center gap-2">
-      <span className="font-sans text-xs font-semibold text-cream">D. Jackson</span>
+      <span className="font-sans text-xs font-semibold text-cream">{officerName || "Officer"}</span>
       <div className="h-2 w-2 rounded-full bg-health-green animate-pulse" />
     </div>
   </header>
 );
 
+const mapLink = "https://maps.app.goo.gl/2z7hszL1FxzcBYK29";
+const mapEmbedSrc = "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d20366.907119904292!2d77.22196297614038!3d28.61683336618423!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1773990601088!5m2!1sen!2sin";
+
 // ─── ACTIVE TASK TAB ───────────────────────────────────────────────────────────
-const ActiveTaskTab = () => {
+const ActiveTaskTab = ({ officerName }: { officerName?: string }) => {
   const [taskState, setTaskState] = useState(0); // 0-4
 
   const steps = [
@@ -66,7 +70,7 @@ const ActiveTaskTab = () => {
 
   return (
     <div className="pb-24">
-      <MobileHeader title="Active Task" />
+      <MobileHeader title="Active Task" officerName={officerName} />
 
       <AnimatePresence>
         {taskState < 4 && (
@@ -101,7 +105,7 @@ const ActiveTaskTab = () => {
 
           {/* Sequential steps with vertical timeline line */}
           <div className="relative pl-6 space-y-3">
-            <div className="absolute left-[11px] top-3 bottom-3 w-px border-l-2 border-dashed border-border-forest-light" />
+            <div className="absolute left-2.75 top-3 bottom-3 w-px border-l-2 border-dashed border-border-forest-light" />
             {steps.map((btn, i) => {
               if (i > taskState) return null;
               const isActive = i === taskState;
@@ -154,6 +158,170 @@ const ActiveTaskTab = () => {
   );
 };
 
+const OfficerTasksTab = ({ officer }: { officer: ApiUser | null }) => {
+  const [tasks, setTasks] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const loadTasks = async () => {
+    if (!officer) {
+      setTasks([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setError(null);
+      const issues = await listIssues();
+      const assigned = issues.filter((issue) => {
+        if (!issue.assignedTo) return false;
+        if (issue.status === "resolved" || issue.status === "closed") return false;
+        if (typeof issue.assignedTo === "string") return issue.assignedTo === officer._id;
+        return issue.assignedTo._id === officer._id;
+      });
+      const sorted = [...assigned].sort((a, b) => {
+        const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return bTime - aTime;
+      });
+      setTasks(sorted);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load officer tasks.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+  }, [officer?._id]);
+
+  const moveStatus = async (issue: Issue, nextStatus: Issue["status"]) => {
+    try {
+      setUpdatingId(issue._id);
+      await updateIssueStatus(issue._id, nextStatus);
+      if (officer?._id) {
+        await createIssueUpdate({
+          issueId: issue._id,
+          userId: officer._id,
+          message: `Status changed to ${nextStatus.replace(/_/g, " ")}`,
+          statusUpdate: nextStatus,
+        });
+      }
+      await loadTasks();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update task status.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const statusLabel: Record<Issue["status"], string> = {
+    pending: "Pending",
+    assigned: "Assigned",
+    in_progress: "In Progress",
+    resolved: "Resolved",
+    closed: "Closed",
+  };
+
+  const statusPill: Record<Issue["status"], "info" | "moderate" | "good"> = {
+    pending: "info",
+    assigned: "moderate",
+    in_progress: "moderate",
+    resolved: "good",
+    closed: "good",
+  };
+
+  return (
+    <div className="pb-24">
+      <MobileHeader title="Tasks" officerName={officer?.name} />
+      <div className="p-4 space-y-4">
+        {!officer && <div className="font-sans text-sm text-muted">Loading officer profile...</div>}
+        {loading && <div className="font-sans text-sm text-muted">Loading assigned tasks...</div>}
+        {error && <div className="font-sans text-sm text-health-red">{error}</div>}
+        {!loading && !error && tasks.length === 0 && (
+          <div className="bg-forest-card border border-border-forest-light rounded p-5 font-sans text-sm text-muted">
+            No tasks assigned yet. Ask command center to assign an issue.
+          </div>
+        )}
+
+        {tasks.map((task) => {
+          const token = `TKN-${task._id.slice(-6).toUpperCase()}`;
+          const location = [task.location?.address, task.location?.city].filter(Boolean).join(", ") || "Location not provided";
+          const canStart = task.status === "assigned";
+          const canResolve = task.status === "in_progress";
+
+          return (
+            <div key={task._id} className="bg-forest-card border border-border-forest-light rounded p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-data text-xs text-lime font-bold">{token}</div>
+                  <h3 className="font-sans text-base text-cream font-semibold mt-1">{task.title || task.category || "Assigned Issue"}</h3>
+                  <p className="font-sans text-xs text-muted mt-1">{location}</p>
+                </div>
+                <StatusPill label={statusLabel[task.status]} level={statusPill[task.status]} />
+              </div>
+
+              <p className="font-sans text-sm text-muted mt-3">{task.description || "No description provided."}</p>
+
+              <div className="mt-4 flex gap-2">
+                <AnimatedCTA
+                  variant="teal"
+                  size="sm"
+                  className="flex-1"
+                  disabled={!canStart || updatingId === task._id}
+                  onClick={() => moveStatus(task, "in_progress")}
+                >
+                  {updatingId === task._id && canStart ? "Updating..." : "Start"}
+                </AnimatedCTA>
+                <AnimatedCTA
+                  variant="primary"
+                  size="sm"
+                  className="flex-1"
+                  disabled={!canResolve || updatingId === task._id}
+                  onClick={() => moveStatus(task, "resolved")}
+                >
+                  {updatingId === task._id && canResolve ? "Updating..." : "Mark Resolved"}
+                </AnimatedCTA>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ─── MAP TAB ──────────────────────────────────────────────────────────────────
+const OfficerMapTab = () => (
+  <div className="pb-24 h-[calc(100vh-72px)] flex flex-col">
+    <MobileHeader title="Map" />
+    <div className="p-4 flex-1 flex flex-col gap-3 min-h-0">
+      <div className="flex items-center justify-between">
+        <p className="font-sans text-xs text-muted uppercase tracking-wider">Zone 4A Live Map</p>
+        <a
+          href={mapLink}
+          target="_blank"
+          rel="noreferrer"
+          className="font-data text-[10px] uppercase tracking-wider text-accent-gold border border-accent-gold/40 bg-accent-gold/10 px-2.5 py-1.5 rounded"
+        >
+          Open Maps
+        </a>
+      </div>
+      <div className="flex-1 rounded border border-border-forest-light overflow-hidden min-h-105 bg-forest-card">
+        <iframe
+          title="Officer Field Map"
+          src={mapEmbedSrc}
+          className="w-full h-full"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+    </div>
+  </div>
+);
+
 // ─── OFFICER CHAT ──────────────────────────────────────────────────────────────
 type Msg = { id: number; from: "me" | "citizen" | "command"; text: string; time: string };
 
@@ -205,7 +373,7 @@ const OfficerChatTab = () => {
             className={cn("flex-1 flex flex-col items-center gap-1 py-3 px-3 border-b-2 transition-colors relative",
               activeThread === t.id ? "border-accent-teal text-cream bg-forest-primary/40" : "border-transparent text-muted hover:text-cream"
             )}>
-            <span className="font-sans text-xs font-semibold truncate max-w-[100px]">{t.name}</span>
+            <span className="font-sans text-xs font-semibold truncate max-w-25">{t.name}</span>
             <span className="font-data text-[10px] text-lime">{t.id}</span>
             {t.unread > 0 && <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-health-red flex items-center justify-center font-data text-[9px] text-white">{t.unread}</div>}
           </button>
@@ -252,7 +420,7 @@ const OfficerChatTab = () => {
           <textarea rows={1} value={inputVal} onChange={e => setInputVal(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); } }}
             placeholder="Type message… (Enter to send)"
-            className="flex-1 bg-forest-elevated border border-border-forest-light rounded p-3 font-sans text-sm text-cream placeholder:text-muted outline-none focus:border-lime transition-colors resize-none min-h-[44px]" />
+            className="flex-1 bg-forest-elevated border border-border-forest-light rounded p-3 font-sans text-sm text-cream placeholder:text-muted outline-none focus:border-lime transition-colors resize-none min-h-11" />
           <button onClick={sendMsg} className="h-11 w-11 bg-accent-teal rounded flex items-center justify-center hover:brightness-110 transition-all shrink-0">
             <Send className="h-4 w-4 text-forest-primary" />
           </button>
@@ -263,26 +431,61 @@ const OfficerChatTab = () => {
 };
 
 // ─── PROFILE TAB ───────────────────────────────────────────────────────────────
-const ProfileTab = () => (
+const ProfileTab = ({ officer }: { officer: ApiUser | null }) => {
+  const [onDuty, setOnDuty] = useState(true);
+  const [issues, setIssues] = useState<Issue[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadIssues = async () => {
+      if (!officer) return;
+      const data = await listIssues();
+      if (mounted) setIssues(data);
+    };
+    loadIssues();
+    return () => {
+      mounted = false;
+    };
+  }, [officer?._id]);
+
+  const assignedToOfficer = issues.filter((issue) => {
+    if (!officer || !issue.assignedTo) return false;
+    if (typeof issue.assignedTo === "string") return issue.assignedTo === officer._id;
+    return issue.assignedTo._id === officer._id;
+  });
+  const activeTasks = assignedToOfficer.filter((issue) => issue.status === "assigned" || issue.status === "in_progress").length;
+  const completedTasks = assignedToOfficer.filter((issue) => issue.status === "resolved" || issue.status === "closed").length;
+  const resolutionRate = assignedToOfficer.length === 0 ? "0%" : `${Math.round((completedTasks / assignedToOfficer.length) * 100)}%`;
+  const initials = officer?.name
+    ? officer.name
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase()
+    : "OF";
+
+  return (
   <div className="pb-24">
-    <MobileHeader title="Profile" />
+    <MobileHeader title="Profile" officerName={officer?.name} />
     <div className="p-4 space-y-4">
       {/* Avatar */}
       <div className="bg-forest-card border border-border-forest-light rounded p-6 flex flex-col items-center gap-4">
-        <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center text-accent-gold font-bold text-2xl">DJ</div>
+        <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center text-accent-gold font-bold text-2xl">{initials}</div>
         <div className="text-center">
-          <h2 className="font-sans font-bold text-cream text-lg">Officer D. Jackson</h2>
-          <p className="font-data text-sm text-lime mt-0.5">BADGE-092</p>
+          <h2 className="font-sans font-bold text-cream text-lg">{officer?.name || "Officer"}</h2>
+          <p className="font-data text-sm text-lime mt-0.5">{(officer?.department || "field-ops").toUpperCase()}</p>
           <div className="flex items-center justify-center gap-2 mt-2">
             <div className="w-2 h-2 rounded-full bg-health-green animate-pulse" />
-            <span className="font-sans text-xs text-health-green">On Duty</span>
+            <span className={cn("font-sans text-xs", onDuty ? "text-health-green" : "text-health-red")}>{onDuty ? "On Duty" : "Off Duty"}</span>
           </div>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        {[["3", "Active Tasks"], ["12", "Completed Today"], ["98%", "Resolution Rate"]].map(([v,l]) => (
+        {[[String(activeTasks), "Active Tasks"], [String(completedTasks), "Completed"], [resolutionRate, "Resolution Rate"]].map(([v,l]) => (
           <div key={l} className="bg-forest-card border border-border-forest-light rounded p-4 text-center">
             <div className="font-data text-2xl font-bold text-lime">{v}</div>
             <div className="font-sans text-[10px] text-muted uppercase tracking-wider mt-1">{l}</div>
@@ -292,7 +495,7 @@ const ProfileTab = () => (
 
       {/* Details */}
       <div className="bg-forest-card border border-border-forest-light rounded overflow-hidden">
-        {[["Zone", "Zone 4A — Central"], ["Department", "Field Operations"], ["Shift", "Morning 06:00–14:00"], ["Equipment", "Kit-B, N95, Meter"]].map(([l,v]) => (
+        {[["Department", officer?.department || "Field Operations"], ["Email", officer?.email || "N/A"], ["Role", officer?.role || "officer"], ["Equipment", "Kit-B, N95, Meter"]].map(([l,v]) => (
           <div key={l} className="flex justify-between items-center px-5 py-4 border-b border-border-forest-light last:border-0">
             <span className="font-sans text-sm text-muted">{l}</span>
             <span className="font-sans text-sm text-cream">{v}</span>
@@ -300,22 +503,59 @@ const ProfileTab = () => (
         ))}
       </div>
 
-      <AnimatedCTA variant="ghost" className="w-full border-health-red text-health-red hover:bg-health-red/10">Go Off Duty</AnimatedCTA>
+      <AnimatedCTA
+        variant="ghost"
+        className="w-full border-health-red text-health-red hover:bg-health-red/10"
+        onClick={() => setOnDuty((v) => !v)}
+      >
+        {onDuty ? "Go Off Duty" : "Return On Duty"}
+      </AnimatedCTA>
     </div>
   </div>
-);
+  );
+};
 
 // ─── MAIN ──────────────────────────────────────────────────────────────────────
 export const OfficerDashboard = () => (
-  <>
-    <div className="min-h-screen bg-forest-primary font-sans pt-[72px] max-w-[480px] mx-auto relative">
-      <Routes>
-        <Route path="/"         element={<ActiveTaskTab />} />
-        <Route path="/messages" element={<OfficerChatTab />} />
-        <Route path="/profile"  element={<ProfileTab />} />
-        <Route path="*"         element={<div className="p-4 pt-16 font-sans text-muted text-sm">Under development.</div>} />
-      </Routes>
-    </div>
-    <BottomNav />
-  </>
+  <OfficerDashboardContent />
 );
+
+const OfficerDashboardContent = () => {
+  const [officer, setOfficer] = useState<ApiUser | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadOfficer = async () => {
+      const users = await listUsers();
+      const officers = users.filter((user) => user.role === "officer");
+      if (officers.length > 0) {
+        if (mounted) setOfficer(officers[0]);
+        return;
+      }
+
+      const seeded = await getOrCreateDemoUser("officer");
+      if (mounted) setOfficer(seeded);
+    };
+
+    loadOfficer();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return (
+    <>
+      <div className="min-h-screen bg-forest-primary font-sans pt-18 max-w-120 mx-auto relative">
+        <Routes>
+          <Route path="/"         element={<ActiveTaskTab officerName={officer?.name} />} />
+          <Route path="/map"      element={<OfficerMapTab />} />
+          <Route path="/tasks"    element={<OfficerTasksTab officer={officer} />} />
+          <Route path="/messages" element={<OfficerChatTab />} />
+          <Route path="/profile"  element={<ProfileTab officer={officer} />} />
+          <Route path="*"         element={<OfficerTasksTab officer={officer} />} />
+        </Routes>
+      </div>
+      <BottomNav />
+    </>
+  );
+};

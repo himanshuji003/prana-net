@@ -75,9 +75,9 @@ const LeafDecoration = () => (
 // ─── Ambient Glow Orbs ─────────────────────────────────────────────────────────
 const AmbientOrbs = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-    <div className="animate-orb absolute -top-32 right-[5%] w-[600px] h-[600px] rounded-full" style={{ background: "radial-gradient(circle, rgba(76,175,114,0.07) 0%, transparent 70%)", filter: "blur(60px)", animationDuration: "14s" }} />
-    <div className="animate-orb absolute top-[40%] -left-40 w-[500px] h-[500px] rounded-full" style={{ background: "radial-gradient(circle, rgba(61,191,173,0.05) 0%, transparent 70%)", filter: "blur(80px)", animationDuration: "18s", animationDelay: "3s" }} />
-    <div className="animate-orb absolute bottom-0 right-[20%] w-[400px] h-[400px] rounded-full" style={{ background: "radial-gradient(circle, rgba(198,228,122,0.04) 0%, transparent 70%)", filter: "blur(80px)", animationDuration: "22s", animationDelay: "6s" }} />
+    <div className="animate-orb absolute -top-32 right-[5%] w-150 h-150 rounded-full" style={{ background: "radial-gradient(circle, rgba(76,175,114,0.07) 0%, transparent 70%)", filter: "blur(60px)", animationDuration: "14s" }} />
+    <div className="animate-orb absolute top-[40%] -left-40 w-125 h-125 rounded-full" style={{ background: "radial-gradient(circle, rgba(61,191,173,0.05) 0%, transparent 70%)", filter: "blur(80px)", animationDuration: "18s", animationDelay: "3s" }} />
+    <div className="animate-orb absolute bottom-0 right-[20%] w-100 h-100 rounded-full" style={{ background: "radial-gradient(circle, rgba(198,228,122,0.04) 0%, transparent 70%)", filter: "blur(80px)", animationDuration: "22s", animationDelay: "6s" }} />
   </div>
 );
 
@@ -102,7 +102,7 @@ const MosaicCard = ({ type }: { type: number }) => {
         <div className="font-data text-[72px] font-bold leading-none text-health-amber">87</div>
         <div className="font-data text-xs text-muted mt-1">AQI · Moderate</div>
       </div>
-      <div className="flex gap-[3px] items-end h-10">
+      <div className="flex gap-0.75 items-end h-10">
         {[30,45,52,40,65,87,72,88,70,87].map((v,i) => (
           <div key={i} className="w-3 rounded-sm bg-health-amber/60 transition-all" style={{ height: `${v/88*100}%`, opacity: 0.4 + i*0.06 }} />
         ))}
@@ -225,7 +225,7 @@ const SuperTreeVisual = () => (
       <div key={i} className="absolute rounded-full border border-health-green/10" style={{ width: `${80+i*80}px`, height: `${80+i*80}px`, top: "50%", left: "50%", transform: "translate(-50%, -50%)" }} />
     ))}
     {/* Trunk */}
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[4px] rounded-full" style={{ height: "300px", background: "linear-gradient(to top, #4CAF72, #C6E47A)" }} />
+    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-1 rounded-full" style={{ height: "300px", background: "linear-gradient(to top, #4CAF72, #C6E47A)" }} />
     {/* Sensor nodes on trunk */}
     {[{ top: "30%", label: "PM2.5" }, { top: "52%", label: "CO₂" }, { top: "72%", label: "NOx" }].map((node, i) => (
       <div key={i} className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3" style={{ top: node.top }}>
@@ -267,7 +267,7 @@ export const LandingPage = () => {
       className="relative min-h-screen"
     >
       {/* ── HERO ── */}
-      <section ref={heroRef} className="relative min-h-screen flex flex-col pt-[72px] overflow-hidden">
+      <section ref={heroRef} className="relative min-h-screen flex flex-col pt-18 overflow-hidden">
         {/* Layered bg */}
         <div className="absolute inset-0" style={{ background: "#0D1A12" }} />
         <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(76,175,114,0.12) 0%, transparent 70%)" }} />
@@ -352,7 +352,7 @@ export const LandingPage = () => {
               <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i * 0.15} variants={fadeUp}>
                 <div className="h-full bg-forest-card border border-border-forest-light rounded p-10 corner-bracket grid-texture relative overflow-hidden group hover:border-health-green transition-all duration-200" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.25)" }}>
                   <div className="text-[72px] text-center block mb-6 leading-none">{card.icon}</div>
-                  <hr className="border-t-[#1E3225] mb-6" />
+                  <hr className="border-t-border-forest mb-6" />
                   <h3 className="font-sans text-[22px] font-semibold text-cream mb-4">{card.title}</h3>
                   <p className="font-sans text-[17px] text-muted leading-[1.75] mb-6">{card.desc}</p>
                   <div className="font-data text-[11px] text-lime uppercase tracking-wider">{card.tag}</div>
@@ -365,11 +365,11 @@ export const LandingPage = () => {
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="mt-20 flex flex-col md:flex-row items-center gap-0 md:gap-0">
             {["Pollution Detected","Sensors Fire","AI Analyzes","Dashboard Alerts","Action Deployed"].map((step, i) => (
               <React.Fragment key={i}>
-                <div className="flex flex-col items-center justify-center p-6 bg-forest-card border border-border-forest rounded w-full md:w-[175px] h-[175px] relative z-10 transition-all duration-200 hover:border-health-green shrink-0" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                <div className="flex flex-col items-center justify-center p-6 bg-forest-card border border-border-forest rounded w-full md:w-43.75 h-43.75 relative z-10 transition-all duration-200 hover:border-health-green shrink-0" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
                   <div className="h-9 w-9 rounded-full bg-forest-elevated border border-border-forest-light flex items-center justify-center mb-3 font-data text-lime font-bold">0{i+1}</div>
                   <span className="font-sans text-center text-sm font-semibold text-cream">{step}</span>
                 </div>
-                {i < 4 && <div className="hidden md:block h-[2px] flex-1 border-t-2 border-dashed border-border-forest-light" />}
+                {i < 4 && <div className="hidden md:block h-0.5 flex-1 border-t-2 border-dashed border-border-forest-light" />}
               </React.Fragment>
             ))}
           </motion.div>
@@ -407,7 +407,7 @@ export const LandingPage = () => {
               <h2 className="font-display text-[clamp(48px,5.5vw,80px)] leading-[1.05] text-cream">
                 The <em style={{ fontStyle: "italic", color: "#C6E47A" }}>tree</em> that thinks
               </h2>
-              <p className="mt-6 font-sans text-lg text-muted leading-[1.75] max-w-[380px]">
+              <p className="mt-6 font-sans text-lg text-muted leading-[1.75] max-w-95">
                 A modular urban super-organism combining sensor technology, biological filtration, and intelligent IoT telemetry into one elegant form.
               </p>
             </div>
@@ -426,7 +426,7 @@ export const LandingPage = () => {
                 { name: "Smart Airflow System", desc: "Adaptive radial fans responding to real-time density metrics." },
                 { name: "IoT Cloud Module", desc: "Low-latency telemetry streaming direct to the intelligence layer." },
               ].map((item, i) => (
-                <div key={i} className="border-t border-border-forest py-5 flex items-start gap-5 hover:bg-white/[0.02] transition-colors px-2 -mx-2 group cursor-default">
+                <div key={i} className="border-t border-border-forest py-5 flex items-start gap-5 hover:bg-white/2 transition-colors px-2 -mx-2 group cursor-default">
                   <span className="font-data text-xl font-bold text-lime mt-0.5 shrink-0">0{i+1}</span>
                   <div>
                     <h4 className="font-sans text-[18px] font-semibold text-cream">{item.name}</h4>
@@ -459,7 +459,7 @@ export const LandingPage = () => {
               tags: ["Live AQI", "Complaint Portal", "Status Tracking", "Officer Chat"],
               cta: "View Citizen Portal →", ctaVariant: "teal" as const, path: "/citizen",
               preview: (
-                <div className="w-full h-full bg-forest-primary border border-border-forest-light rounded flex overflow-hidden min-h-[280px]">
+                <div className="w-full h-full bg-forest-primary border border-border-forest-light rounded flex overflow-hidden min-h-70">
                   <div className="w-12 bg-forest-secondary border-r border-border-forest flex flex-col items-center pt-4 gap-4">
                     {[...Array(5)].map((_, i) => <div key={i} className={`w-6 h-6 rounded-sm ${i===0 ? "bg-accent-teal/30 border border-accent-teal" : "bg-forest-elevated"}`} />)}
                   </div>
@@ -491,7 +491,7 @@ export const LandingPage = () => {
               tags: ["Heatmap", "Complaint Queue", "AI Recommendations", "Officer Dispatch"],
               cta: "Government Login", ctaVariant: "gold" as const, path: "/official",
               preview: (
-                <div className="w-full h-full bg-forest-primary border border-border-forest-light rounded flex overflow-hidden min-h-[280px]">
+                <div className="w-full h-full bg-forest-primary border border-border-forest-light rounded flex overflow-hidden min-h-70">
                   <div className="flex-1 relative bg-forest-secondary">
                     <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 40% 50%, rgba(224,82,82,0.25) 0%, transparent 60%)" }} />
                     <div className="absolute" style={{ top: "30%", left: "35%", width: 8, height: 8, borderRadius: "50%", background: "#D4A84B" }} />
@@ -515,9 +515,9 @@ export const LandingPage = () => {
               tags: ["Task Updates", "Evidence Upload", "Field Chat", "Route Navigation"],
               cta: "Officer Login", ctaVariant: "primary" as const, path: "/officer",
               preview: (
-                <div className="flex justify-center items-center w-full min-h-[280px]">
-                  <div className="w-[200px] h-[360px] border-[5px] border-forest-elevated rounded-[2rem] bg-forest-secondary overflow-hidden relative shadow-2xl">
-                    <div className="bg-[#111F16] h-10 flex items-center justify-center border-b border-border-forest">
+                <div className="flex justify-center items-center w-full min-h-70">
+                  <div className="w-50 h-90 border-[5px] border-forest-elevated rounded-4xl bg-forest-secondary overflow-hidden relative shadow-2xl">
+                    <div className="bg-forest-secondary h-10 flex items-center justify-center border-b border-border-forest">
                       <div className="w-12 h-1 bg-border-forest-light rounded-full" />
                     </div>
                     <div className="p-3 space-y-2">
@@ -544,7 +544,7 @@ export const LandingPage = () => {
               className="corner-bracket relative mb-12 last:mb-0 overflow-hidden"
               style={{ background: block.accentBg, border: `1px solid ${block.accentBorder}`, borderLeft: `6px solid ${block.accent}` }}
             >
-              <div className={`flex flex-col ${bi % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} min-h-[500px]`}>
+              <div className={`flex flex-col ${bi % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} min-h-125`}>
                 {/* Text side */}
                 <div className="flex-1 p-12 flex flex-col justify-center border-r border-border-forest-light">
                   <div className="relative mb-6">
@@ -554,7 +554,7 @@ export const LandingPage = () => {
                   <h3 className="font-display text-[clamp(36px,4vw,56px)] leading-[1.1] text-cream mb-6">
                     {block.headline} <em style={{ fontStyle: "italic", color: block.accent }}>{block.em}</em>
                   </h3>
-                  <p className="font-sans text-lg text-muted leading-[1.75] max-w-[520px] mb-8">{block.desc}</p>
+                  <p className="font-sans text-lg text-muted leading-[1.75] max-w-130 mb-8">{block.desc}</p>
                   <div className="flex flex-wrap gap-3 mb-10">
                     {block.tags.map((tag, ti) => (
                       <span key={ti} className="px-4 py-1.5 rounded-full font-sans text-xs font-semibold uppercase tracking-wider border" style={{ borderColor: block.accent, color: block.accent, background: `${block.accent}15` }}>{tag}</span>
@@ -602,7 +602,7 @@ export const LandingPage = () => {
                 style={{ background: "rgba(21,35,24,0.6)", minHeight: "200px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}
               >
                 <div className="font-data font-bold text-lime" style={{ fontSize: "clamp(48px,6vw,80px)", lineHeight: 1 }}>{stat.val}</div>
-                <p className="font-sans text-base text-muted leading-[1.75] mt-4 max-w-[420px]">{stat.label}</p>
+                <p className="font-sans text-base text-muted leading-[1.75] mt-4 max-w-105">{stat.label}</p>
               </motion.div>
             ))}
           </div>

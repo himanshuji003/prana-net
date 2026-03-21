@@ -27,7 +27,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({ label, level, className,
   return (
     <div
       className={cn(
-        "inline-flex items-center space-x-2 rounded-[50px] border px-[14px] py-[6px] font-sans text-xs font-semibold uppercase tracking-[0.15em]",
+        "inline-flex items-center space-x-2 rounded-[50px] border px-3.5 py-1.5 font-sans text-xs font-semibold uppercase tracking-[0.15em]",
         styles.bg,
         styles.border,
         styles.text,
@@ -86,7 +86,7 @@ export const AQIPill: React.FC<AQIPillProps> = ({ label, value, level, unit, cla
         {count}
         {unit && <span className="ml-1 text-sm font-normal">{unit}</span>}
       </div>
-      <div className="mt-1 font-sans text-[13px] font-semibold uppercase tracking-[0.1em] text-muted">
+      <div className="mt-1 font-sans text-[13px] font-semibold uppercase tracking-widest text-muted">
         {label}
       </div>
     </div>
