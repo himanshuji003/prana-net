@@ -260,8 +260,8 @@ const CommandOverview = () => {
             </div>
           </div>
           {actionMessage && <div className="px-4 py-2 font-sans text-xs text-health-green border-b border-border-forest-light">{actionMessage}</div>}
+          {error && <div className="px-4 py-3 font-sans text-xs text-health-red border-b border-health-red/40 bg-health-red/10 flex justify-between items-center"><span>{error}</span> <button onClick={() => setError(null)} className="text-health-red/60 hover:text-health-red">✕</button></div>}
           {isLoading && <div className="px-4 py-3 font-sans text-xs text-muted">Loading complaints...</div>}
-          {error && <div className="px-4 py-3 font-sans text-xs text-health-red">{error}</div>}
           {!layerVisibility.complaints && <div className="px-4 py-3 font-sans text-xs text-muted">Complaints layer is hidden. Enable it from Layers to view queue items.</div>}
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-0">
             {layerVisibility.complaints && filteredComplaints.map((item, i) => (
@@ -277,13 +277,13 @@ const CommandOverview = () => {
                       variant="gold"
                       size="sm"
                       className="h-7 px-3 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                      disabled={assigning === item.id || !layerVisibility.officers || !officialId}
+                      disabled={!officialId}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleAssign(item.id, officers[0]?._id || "");
+                        setSelectedToken(item.id);
                       }}
                     >
-                      {assigning === item.id ? "Assigning..." : "Assign"}
+                      Show Details
                     </AnimatedCTA>
                   )}
                 </div>
@@ -319,10 +319,21 @@ const CommandOverview = () => {
                   <span className="font-sans text-[10px] tracking-[0.2em] text-muted uppercase">Complaint ID</span>
                   <h2 className="font-data text-2xl font-bold text-lime mt-1">TKN-{selectedToken.slice(-6).toUpperCase()}</h2>
                 </div>
-                <button onClick={() => setSelectedToken(null)} className="h-9 w-9 bg-forest-elevated rounded flex items-center justify-center text-muted hover:text-white transition-colors">
+                <button onClick={() => { setSelectedToken(null); setError(null); }} className="h-9 w-9 bg-forest-elevated rounded flex items-center justify-center text-muted hover:text-white transition-colors">
                   <X className="h-4 w-4" />
                 </button>
               </div>
+              {error && (
+                <div className="px-6 py-3 font-sans text-xs text-health-red border-b border-health-red/40 bg-health-red/10 flex justify-between items-center">
+                  <span>{error}</span>
+                  <button onClick={() => setError(null)} className="text-health-red/60 hover:text-health-red">✕</button>
+                </div>
+              )}
+              {actionMessage && (
+                <div className="px-6 py-3 font-sans text-xs text-health-green border-b border-health-green/40 bg-health-green/10">
+                  {actionMessage}
+                </div>
+              )}
               <div className="flex flex-1 overflow-hidden">
                 <div className="w-[55%] p-6 border-r border-border-forest-light overflow-y-auto space-y-6">
                   <div>
@@ -388,24 +399,45 @@ const CommandOverview = () => {
                   </div>
                   <div className="p-5 overflow-y-auto flex-1">
                     <h3 className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-muted mb-4">Assign Officer</h3>
-                    {officers.map((o, i) => (
-                      <div key={i} className="flex items-center gap-3 p-3 border border-border-forest-light rounded hover:bg-forest-elevated cursor-pointer mb-2 transition-all">
-                        <div className="h-9 w-9 rounded-full bg-forest-primary flex items-center justify-center text-xs font-bold border border-white/10 text-lime shrink-0">{o.name.slice(0, 1)}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-sans text-sm font-semibold text-cream">{o.name}</div>
-                          <div className="font-data text-[10px] text-muted">{(o.department || "field").toUpperCase()}</div>
-                        </div>
-                        <AnimatedCTA
-                          variant="gold"
-                          size="sm"
-                          className="h-8 px-3 text-xs"
-                          disabled={!selectedIssue || assigning === selectedIssue._id || !officialId}
-                          onClick={() => handleSelectOfficer(o._id)}
-                        >
-                          {selectedIssue && assigning === selectedIssue._id ? "Assigning..." : "Select"}
-                        </AnimatedCTA>
+                    {selectedIssue?.assignedTo && (
+                      <div className="mb-4 p-3 bg-health-green/10 border border-health-green/30 rounded">
+                        <p className="font-sans text-[10px] text-health-green uppercase font-semibold mb-2">✓ Currently Assigned</p>
+                        {typeof selectedIssue.assignedTo === "object" ? (
+                          <>
+                            <div className="font-sans text-sm font-semibold text-cream">{(selectedIssue.assignedTo as any).name}</div>
+                            <div className="font-data text-[10px] text-muted">{((selectedIssue.assignedTo as any).department || "field").toUpperCase()}</div>
+                          </>
+                        ) : null}
                       </div>
-                    ))}
+                    )}
+                    <div>
+                      <p className="font-sans text-[10px] text-muted uppercase font-semibold mb-3">Reassign to Officer</p>
+                      {officers.map((o, i) => {
+                        const isAssigned = selectedIssue?.assignedTo && 
+                          (typeof selectedIssue.assignedTo === "object" ? 
+                            (selectedIssue.assignedTo as any)._id === o._id : 
+                            selectedIssue.assignedTo === o._id);
+                        return (
+                          <div key={i} className={cn("flex items-center gap-3 p-3 border rounded mb-2 transition-all", 
+                            isAssigned ? "border-health-green/50 bg-health-green/5" : "border-border-forest-light hover:bg-forest-elevated cursor-pointer")}>
+                            <div className="h-9 w-9 rounded-full bg-forest-primary flex items-center justify-center text-xs font-bold border border-white/10 text-lime shrink-0">{o.name.slice(0, 1)}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-sans text-sm font-semibold text-cream">{o.name}</div>
+                              <div className="font-data text-[10px] text-muted">{(o.department || "field").toUpperCase()}</div>
+                            </div>
+                            <AnimatedCTA
+                              variant={isAssigned ? "ghost" : "gold"}
+                              size="sm"
+                              className="h-8 px-3 text-xs"
+                              disabled={!selectedIssue || assigning === selectedIssue._id || !officialId || isAssigned}
+                              onClick={() => handleSelectOfficer(o._id)}
+                            >
+                              {assigning === selectedIssue?._id ? "Assigning..." : isAssigned ? "Assigned" : "Assign"}
+                            </AnimatedCTA>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -58,8 +58,82 @@ const mapLink = "https://maps.app.goo.gl/2z7hszL1FxzcBYK29";
 const mapEmbedSrc = "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d20366.907119904292!2d77.22196297614038!3d28.61683336618423!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1773990601088!5m2!1sen!2sin";
 
 // ─── ACTIVE TASK TAB ───────────────────────────────────────────────────────────
-const ActiveTaskTab = ({ officerName }: { officerName?: string }) => {
+const ActiveTaskTab = ({ officerName, officerId }: { officerName?: string; officerId?: string }) => {
   const [taskState, setTaskState] = useState(0); // 0-4
+  const [currentTask, setCurrentTask] = useState<Issue | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+
+  useEffect(() => {
+    const loadFirstTask = async () => {
+      if (!officerId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setError(null);
+        const issues = await listIssues();
+        const assigned = issues.filter((issue) => {
+          if (!issue.assignedTo) return false;
+          if (issue.status === "resolved" || issue.status === "closed") return false;
+          if (typeof issue.assignedTo === "string") return issue.assignedTo === officerId;
+          return issue.assignedTo._id === officerId;
+        });
+        if (assigned.length > 0) {
+          setCurrentTask(assigned[0]);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load task");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadFirstTask();
+  }, [officerId]);
+
+  const handleMarkResolved = async () => {
+    if (!currentTask) return;
+    try {
+      setResolving(true);
+      await updateIssueStatus(currentTask._id, "resolved");
+      if (officerId) {
+        await createIssueUpdate({
+          issueId: currentTask._id,
+          userId: officerId,
+          message: "Task marked as resolved",
+          statusUpdate: "resolved",
+        });
+      }
+      setTaskState(4); // Show resolved screen
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to mark task as resolved");
+      setResolving(false);
+    }
+  };
+
+  const handleViewNextTask = async () => {
+    try {
+      setLoading(true);
+      setTaskState(0);
+      const issues = await listIssues();
+      const assigned = issues.filter((issue) => {
+        if (!issue.assignedTo) return false;
+        if (issue.status === "resolved" || issue.status === "closed") return false;
+        if (typeof issue.assignedTo === "string") return issue.assignedTo === officerId;
+        return issue.assignedTo._id === officerId;
+      });
+      if (assigned.length > 0) {
+        setCurrentTask(assigned[0]);
+      } else {
+        setCurrentTask(null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load next task");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const steps = [
     { label: "Accept Task",      bg: "bg-health-green text-forest-primary" },
@@ -67,6 +141,34 @@ const ActiveTaskTab = ({ officerName }: { officerName?: string }) => {
     { label: "Action Taken",     bg: "bg-health-green text-forest-primary" },
     { label: "Mark Resolved",    bg: "bg-accent-teal text-forest-primary" },
   ];
+
+  if (loading) {
+    return (
+      <div className="pb-24">
+        <MobileHeader title="Active Task" officerName={officerName} />
+        <div className="p-4 font-sans text-sm text-muted">Loading task...</div>
+      </div>
+    );
+  }
+
+  if (!currentTask) {
+    return (
+      <div className="pb-24">
+        <MobileHeader title="Active Task" officerName={officerName} />
+        <div className="p-4 flex flex-col items-center justify-center text-center py-20">
+          <div className="h-16 w-16 rounded-full bg-health-green/20 flex items-center justify-center mb-4">
+            <CheckCircle2 className="h-8 w-8 text-health-green" />
+          </div>
+          <h2 className="font-display text-2xl text-cream mb-2">All Set!</h2>
+          <p className="font-sans text-muted text-sm">No active tasks at the moment. Great work!</p>
+        </div>
+      </div>
+    );
+  }
+
+  const token = `TKN-${currentTask._id.slice(-6).toUpperCase()}`;
+  const title = currentTask.title || currentTask.category || "Assigned Issue";
+  const location = [currentTask.location?.address, currentTask.location?.city].filter(Boolean).join(", ") || "Location not provided";
 
   return (
     <div className="pb-24">
@@ -79,28 +181,35 @@ const ActiveTaskTab = ({ officerName }: { officerName?: string }) => {
             {taskState === 0 && <div className="absolute left-0 top-0 h-full w-1 bg-health-red animate-pulse" />}
             <div className="flex-1">
               <span className="font-sans text-[10px] uppercase tracking-[0.2em] font-bold text-health-red">⚡ New Assignment</span>
-              <div className="font-data text-xl text-health-red font-bold mt-1">TKN-2024-847</div>
-              <p className="font-sans text-sm text-cream mt-1">Industrial Smoke Emission</p>
+              <div className="font-data text-xl text-health-red font-bold mt-1">{token}</div>
+              <p className="font-sans text-sm text-cream mt-1">{title}</p>
               <div className="flex items-center gap-2 mt-2 font-sans text-xs text-muted">
-                <Navigation className="h-3 w-3" /> Zone 4A — Sector 9
+                <Navigation className="h-3 w-3" /> {location}
               </div>
             </div>
             <div className="text-right">
-              <StatusPill label="High" level="hazardous" />
-              <p className="font-data text-[10px] text-muted mt-2">14:02 PM</p>
+              <StatusPill label={currentTask.priority === "high" ? "High" : "Medium"} level={currentTask.priority === "high" ? "hazardous" : "moderate"} />
+              <p className="font-data text-[10px] text-muted mt-2">{new Date(currentTask.createdAt || 0).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {error && (
+        <div className="m-4 p-3 bg-health-red/10 border border-health-red/40 rounded font-sans text-xs text-health-red flex justify-between items-center">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-health-red/60 hover:text-health-red">✕</button>
+        </div>
+      )}
+
       {taskState < 4 ? (
         <motion.div layout className="m-4 bg-forest-card border border-border-forest-light rounded p-5">
           <p className="font-sans text-[15px] text-muted leading-relaxed mb-4">
-            Large plumes of dark gray smoke reported. Suspected chemical hazard. Respiratory suppression gear recommended.
+            {currentTask.description || "Task details and instructions"}
           </p>
           <div className="bg-health-green/10 border border-health-green/30 text-lime p-3 rounded font-sans text-xs flex gap-2 mb-6 items-start">
             <span className="shrink-0 mt-0.5 animate-pulse">⚡</span>
-            <span><b>AI Recommended:</b> Deploy water misting units. Verify facility permit codes on site.</span>
+            <span><b>Category:</b> {currentTask.category || "General"} • <b>Priority:</b> {currentTask.priority}</span>
           </div>
 
           {/* Sequential steps with vertical timeline line */}
@@ -110,6 +219,7 @@ const ActiveTaskTab = ({ officerName }: { officerName?: string }) => {
               if (i > taskState) return null;
               const isActive = i === taskState;
               const isDone = i < taskState;
+              const shouldDisable = i === steps.length - 1 && resolving; // Disable when resolving
               return (
                 <div key={i} className="relative flex items-center gap-3">
                   {/* Timeline dot */}
@@ -119,12 +229,18 @@ const ActiveTaskTab = ({ officerName }: { officerName?: string }) => {
                     {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="font-data text-[10px] font-bold">{i+1}</span>}
                   </div>
                   <motion.button layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                    onClick={() => isActive && setTaskState(s => s + 1)}
-                    disabled={isDone}
+                    onClick={() => {
+                      if (isActive && i === steps.length - 1) {
+                        handleMarkResolved();
+                      } else if (isActive) {
+                        setTaskState(s => s + 1);
+                      }
+                    }}
+                    disabled={isDone || shouldDisable}
                     className={cn("flex-1 h-12 rounded font-sans text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200",
                       isDone ? "bg-forest-elevated text-muted/50 border border-border-forest-light line-through" : isActive ? btn.bg : "bg-forest-elevated text-muted border border-border-forest-light"
                     )}>
-                    {isDone ? <><CheckCircle2 className="h-4 w-4" /> Completed</> : btn.label}
+                    {isDone ? <><CheckCircle2 className="h-4 w-4" /> Completed</> : shouldDisable ? "Resolving..." : btn.label}
                   </motion.button>
                 </div>
               );
@@ -150,8 +266,10 @@ const ActiveTaskTab = ({ officerName }: { officerName?: string }) => {
             <CheckCircle2 className="h-10 w-10" />
           </div>
           <h2 className="font-display text-3xl text-health-green mb-2">Issue Resolved</h2>
-          <p className="font-sans text-sm text-cream mb-8">TKN-2024-847 closed. Report sent to Command.</p>
-          <AnimatedCTA variant="primary" className="w-full" onClick={() => setTaskState(0)}>View Next Assignment</AnimatedCTA>
+          <p className="font-sans text-sm text-cream mb-8">{token} closed. Report sent to Command.</p>
+          <AnimatedCTA variant="primary" className="w-full" onClick={handleViewNextTask} disabled={loading}>
+            {loading ? "Loading..." : "View Next Assignment"}
+          </AnimatedCTA>
         </motion.div>
       )}
     </div>
@@ -547,7 +665,7 @@ const OfficerDashboardContent = () => {
     <>
       <div className="min-h-screen bg-forest-primary font-sans pt-18 max-w-120 mx-auto relative">
         <Routes>
-          <Route path="/"         element={<ActiveTaskTab officerName={officer?.name} />} />
+          <Route path="/"         element={<ActiveTaskTab officerName={officer?.name} officerId={officer?._id} />} />
           <Route path="/map"      element={<OfficerMapTab />} />
           <Route path="/tasks"    element={<OfficerTasksTab officer={officer} />} />
           <Route path="/messages" element={<OfficerChatTab />} />
