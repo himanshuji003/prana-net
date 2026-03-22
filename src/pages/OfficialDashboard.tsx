@@ -407,7 +407,19 @@ const CommandOverview = () => {
                             <div className="font-sans text-sm font-semibold text-cream">{(selectedIssue.assignedTo as any).name}</div>
                             <div className="font-data text-[10px] text-muted">{((selectedIssue.assignedTo as any).department || "field").toUpperCase()}</div>
                           </>
-                        ) : null}
+                        ) : (
+                          (() => {
+                            const assignedOfficer = officers.find(o => o._id === selectedIssue.assignedTo);
+                            return assignedOfficer ? (
+                              <>
+                                <div className="font-sans text-sm font-semibold text-cream">{assignedOfficer.name}</div>
+                                <div className="font-data text-[10px] text-muted">{(assignedOfficer.department || "field").toUpperCase()}</div>
+                              </>
+                            ) : (
+                              <div className="font-sans text-xs text-muted">Assigned: {typeof selectedIssue.assignedTo === "string" ? selectedIssue.assignedTo.slice(-6) : "Unknown"}</div>
+                            );
+                          })()
+                        )}
                       </div>
                     )}
                     <div>
@@ -429,7 +441,7 @@ const CommandOverview = () => {
                               variant={isAssigned ? "ghost" : "gold"}
                               size="sm"
                               className="h-8 px-3 text-xs"
-                              disabled={!selectedIssue || assigning === selectedIssue._id || !officialId || isAssigned}
+                              disabled={!!(!selectedIssue || (assigning === selectedIssue._id) || !officialId || isAssigned)}
                               onClick={() => handleSelectOfficer(o._id)}
                             >
                               {assigning === selectedIssue?._id ? "Assigning..." : isAssigned ? "Assigned" : "Assign"}

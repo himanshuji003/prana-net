@@ -108,6 +108,7 @@ const ActiveTaskTab = ({ officerName, officerId }: { officerName?: string; offic
       setTaskState(4); // Show resolved screen
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to mark task as resolved");
+    } finally {
       setResolving(false);
     }
   };
@@ -115,6 +116,7 @@ const ActiveTaskTab = ({ officerName, officerId }: { officerName?: string; offic
   const handleViewNextTask = async () => {
     try {
       setLoading(true);
+      setResolving(false);
       setTaskState(0);
       const issues = await listIssues();
       const assigned = issues.filter((issue) => {
@@ -132,6 +134,7 @@ const ActiveTaskTab = ({ officerName, officerId }: { officerName?: string; offic
       setError(err instanceof Error ? err.message : "Failed to load next task");
     } finally {
       setLoading(false);
+      setResolving(false);
     }
   };
 
