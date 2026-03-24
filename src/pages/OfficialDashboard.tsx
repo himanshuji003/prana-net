@@ -3,7 +3,7 @@ import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart2, Map as MapIcon, Layers, Users, Cpu,
-  Activity, PieChart, Search, X, Zap
+  Activity, PieChart, Search, X, Zap, ArrowRightLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusPill } from "@/components/shared/StatusPill";
@@ -23,17 +23,23 @@ const Sidebar = () => {
     { name: "Sensor Network",     path: "/official/sensors",    icon: Activity },
     { name: "Analytics",          path: "/official/analytics",  icon: PieChart },
     { name: "Heatmap",            path: "/official/map",        icon: MapIcon },
+    { name: "Switch To Officer",  path: "/officer",             icon: ArrowRightLeft },
   ];
   return (
     <div className="fixed left-0 top-0 h-full w-65 bg-[#0F1C13] border-r border-border-forest-light z-40 pt-18">
       <nav className="px-2 space-y-0.5 py-4">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
+          const isPortalSwitch = item.path === "/officer";
           const Icon = item.icon;
           return (
             <Link key={item.name} to={item.path}
               className={cn("flex items-center gap-3 px-4 py-3 rounded font-sans text-[14px] transition-all duration-150 border-l-[3px]",
-                isActive ? "bg-accent-gold/10 border-accent-gold text-accent-gold" : "border-transparent text-muted hover:bg-white/4 hover:text-cream"
+                isActive
+                  ? "bg-accent-gold/10 border-accent-gold text-accent-gold"
+                  : isPortalSwitch
+                    ? "border-accent-teal/60 text-accent-teal hover:bg-accent-teal/10"
+                    : "border-transparent text-muted hover:bg-white/4 hover:text-cream"
               )}>
               <Icon className="h-4 w-4 shrink-0" />
               {item.name}

@@ -176,7 +176,7 @@ const OverviewTab = () => (
     <div className="mb-6 flex items-center justify-between">
       <div>
         <h1 className="font-display text-3xl text-cream">Air Quality Overview</h1>
-        <p className="font-sans text-sm text-muted mt-1">Zone 4A — Mumbai Central · Updated 2 min ago</p>
+        <p className="font-sans text-sm text-muted mt-1">Zone 4A —Central Delhi · Updated 2 min ago</p>
       </div>
       <div className="h-3 w-3 rounded-full bg-health-green animate-pulse" />
     </div>
