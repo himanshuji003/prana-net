@@ -106,7 +106,7 @@ const Sidebar = () => {
             <User className="h-5 w-5 text-accent-teal" />
           </div>
           <div>
-            <p className="font-sans font-semibold text-sm text-cream">Alex M.</p>
+            <p className="font-sans font-semibold text-sm text-cream">Shivani</p>
             <p className="font-data text-xs text-lime">Zone 4A</p>
           </div>
         </div>
