@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { StatusPill, type StatusLevel } from "@/components/shared/StatusPill";
 import { AnimatedCTA } from "@/components/shared/AnimatedCTA";
 import { createIssue, getOrCreateDemoUser, listUserIssues, type Issue } from "@/lib/api";
+import IndiaMap from "@/components/ui/IndiaMap";
 
 const mapLink = "https://maps.app.goo.gl/2z7hszL1FxzcBYK29";
 const mapEmbedSrc = "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d20366.907119904292!2d77.22196297614038!3d28.61683336618423!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1773990601088!5m2!1sen!2sin";
@@ -198,18 +199,12 @@ const OverviewTab = () => (
       <div className="col-span-1 lg:col-span-2">
         <h3 className="font-sans text-[18px] font-semibold text-cream mb-4">Live Pollution Heatmap</h3>
         <div className="w-full h-95 bg-forest-secondary border border-border-forest rounded relative overflow-hidden flex items-center justify-center">
-          <iframe
-            title="Citizen Overview Map"
-            src={mapEmbedSrc}
-            className="absolute inset-0 h-full w-full"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
+          <IndiaMap />
           <div className="absolute inset-0 bg-forest-primary/10 pointer-events-none" />
-          <div className="z-10 bg-forest-card/80 backdrop-blur border border-white/10 p-3 rounded text-center">
-            <p className="font-data text-lime text-xs">Interactive Map Active</p>
-            <p className="font-sans text-[10px] text-muted mt-1">3 active heat zones</p>
-          </div>
+          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black/60 backdrop-blur px-3 py-2 rounded-full border border-white/10">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            <p className="text-xs text-white font-medium">Live · 3 zones active</p>
+        </div>
         </div>
       </div>
       <div className="col-span-1 pl-0 lg:pl-4 border-l-0 lg:border-l border-border-forest-light">
@@ -473,13 +468,18 @@ const AirMapTab = () => (
       </a>
     </div>
     <div className="w-full h-[70vh] min-h-115 bg-forest-secondary border border-border-forest rounded overflow-hidden">
-      <iframe
-        title="Citizen Air Map"
-        src={mapEmbedSrc}
-        className="w-full h-full"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-      />
+     <div className="w-full h-full bg-forest-secondary border border-border-forest rounded relative overflow-hidden">
+
+  <IndiaMap />
+
+  <div className="absolute inset-0 bg-forest-primary/10 pointer-events-none" />
+
+  <div className="z-10 bg-forest-card/80 backdrop-blur border border-white/10 p-3 rounded text-center absolute top-3 left-3">
+    <p className="font-data text-lime text-xs">Interactive Map Active</p>
+    <p className="font-sans text-[10px] text-muted mt-1">3 active heat zones</p>
+  </div>
+
+</div>
     </div>
   </motion.div>
 );
