@@ -317,7 +317,7 @@ export const LandingPage = () => {
         <div className="relative z-10 w-full h-12 bg-forest-secondary border-t border-b border-border-forest overflow-hidden flex items-center">
           <div className="flex w-max animate-scroll-left gap-8 pl-8" style={{ animationDuration: "25s" }}>
             {[...Array(3)].map((_, rep) =>
-              ["PM2.5: 42 µg/m³","PM10: 67 µg/m³","CO₂: 412 ppm","NOx: 28 ppb","TEMP: 34°C","HUMIDITY: 68%","AQI: 87 MODERATE","SUPER TREES: 8/10 ONLINE"].map((item, i) => (
+              ["PM2.5: 42 µg/m³","PM10: 67 µg/m³","CO₂: 412 ppm","NOx: 28 ppb","CO2: 412 ppm","NOX: 28 ppb","AQI: 87 MODERATE","SUPER TREES: 8/10 ONLINE"].map((item, i) => (
                 <div key={`${rep}-${i}`} className="flex items-center gap-8 whitespace-nowrap">
                   <span className="font-data text-sm uppercase tracking-wider text-lime">{item}</span>
                   <span className="text-health-green">→</span>

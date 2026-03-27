@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { StatusPill, type StatusLevel } from "@/components/shared/StatusPill";
 import { AnimatedCTA } from "@/components/shared/AnimatedCTA";
-import { createIssue, getOrCreateDemoUser, listUserIssues, type Issue } from "@/lib/api";
+import { createIssue, getOrCreateDemoUser, getSensorData, listUserIssues, type Issue, type SensorData } from "@/lib/api";
 import IndiaMap from "@/components/ui/IndiaMap";
 
 const mapLink = "https://maps.app.goo.gl/2z7hszL1FxzcBYK29";
@@ -54,12 +54,20 @@ function formatDateTime(value?: string) {
   });
 }
 
+const getAQIColor = (aqi: number) => {
+  if (aqi <= 50) return "green";
+  if (aqi <= 100) return "lightgreen";
+  if (aqi <= 200) return "orange";
+  return "red";
+};
+
 // ─── Sparkline ─────────────────────────────────────────────────────────────────
 const Sparkline = ({ data, color = "#C6E47A" }: { data: number[]; color?: string }) => {
-  const max = Math.max(...data), min = Math.min(...data);
+  const points = data.length > 1 ? data : [data[0] ?? 0, data[0] ?? 0];
+  const max = Math.max(...points), min = Math.min(...points);
   const range = max - min || 1;
   const w = 80, h = 28;
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * h}`).join(" ");
+  const pts = points.map((v, i) => `${(i / (points.length - 1)) * w},${h - ((v - min) / range) * h}`).join(" ");
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none">
       <polyline points={pts} stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -69,8 +77,9 @@ const Sparkline = ({ data, color = "#C6E47A" }: { data: number[]; color?: string
 };
 
 // ─── CSS AQI Gauge ─────────────────────────────────────────────────────────────
-const AQIGauge = ({ value = 87, label = "AQI", color = "#E8A838" }: { value?: number; label?: string; color?: string }) => {
-  const pct = Math.min(value / 300, 1);
+const AQIGauge = ({ value = null, label = "AQI", color = "#E8A838" }: { value?: number | null; label?: string; color?: string }) => {
+  const safeValue = value ?? 0;
+  const pct = Math.min(safeValue / 300, 1);
   const angle = pct * 180;
   const rad = (angle - 90) * (Math.PI / 180);
   const r = 44, cx = 60, cy = 56;
@@ -81,7 +90,7 @@ const AQIGauge = ({ value = 87, label = "AQI", color = "#E8A838" }: { value?: nu
         <path d="M 16 56 A 44 44 0 0 1 104 56" stroke="#1E3225" strokeWidth="6" fill="none" strokeLinecap="round" />
         <path d={`M 16 56 A 44 44 0 0 1 ${nX} ${nY}`} stroke={color} strokeWidth="6" fill="none" strokeLinecap="round" />
         <circle cx={nX} cy={nY} r="5" fill={color} />
-        <text x="60" y="52" textAnchor="middle" fill={color} fontSize="18" fontFamily="JetBrains Mono" fontWeight="700">{value}</text>
+        <text x="60" y="52" textAnchor="middle" fill={color} fontSize="18" fontFamily="JetBrains Mono" fontWeight="700">{value === null ? "Loading..." : value}</text>
         <text x="60" y="64" textAnchor="middle" fill="#A8A89C" fontSize="8" fontFamily="Sora" letterSpacing="2">{label}</text>
       </svg>
     </div>
@@ -89,7 +98,7 @@ const AQIGauge = ({ value = 87, label = "AQI", color = "#E8A838" }: { value?: nu
 };
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
-const Sidebar = () => {
+const Sidebar = ({ sensorData }: { sensorData: SensorData | null }) => {
   const location = useLocation();
   const navItems = [
     { name: "Overview",       path: "/citizen",            icon: Home },
@@ -111,7 +120,13 @@ const Sidebar = () => {
             <p className="font-data text-xs text-lime">Zone 4A</p>
           </div>
         </div>
-        <div className="flex justify-center"><AQIGauge value={87} label="CURRENT AQI" color="#E8A838" /></div>
+        <div className="flex justify-center">
+          <AQIGauge
+            value={sensorData?.aqi ?? null}
+            label={sensorData?.status ? sensorData.status.toUpperCase() : "CURRENT AQI"}
+            color={getAQIColor(sensorData?.aqi ?? 0)}
+          />
+        </div>
       </div>
       <nav className="px-2 space-y-0.5 py-4 flex-1">
         {navItems.map((item) => {
@@ -138,12 +153,36 @@ const Sidebar = () => {
 };
 
 // ─── SparklineStrip ────────────────────────────────────────────────────────────
-const SparklineStrip = () => {
+const SparklineStrip = ({
+  sensorData,
+  sensorHistory,
+}: {
+  sensorData: SensorData | null;
+  sensorHistory: {
+    pm25: number[];
+    humidity: number[];
+    co2: number[];
+  };
+}) => {
   const pollutants = [
-    { label: "PM2.5", current: "42 µg/m³", data: [55,48,42,51,44,39,42], color: "#C6E47A" },
-    { label: "PM10",  current: "67 µg/m³", data: [70,65,72,68,66,71,67], color: "#E8A838" },
-    { label: "CO₂",   current: "412 ppm",  data: [400,408,415,410,405,414,412], color: "#3DBFAD" },
-    { label: "NOx",   current: "28 ppb",   data: [32,29,25,30,27,26,28], color: "#C6E47A" },
+    {
+      label: "PM2.5",
+      current: sensorData ? `${sensorData.pm25} µg/m³` : "Loading...",
+      data: sensorHistory.pm25,
+      color: "#C6E47A",
+    },
+    {
+      label: "Humidity",
+      current: sensorData ? `${sensorData.humidity}%` : "Loading...",
+      data: sensorHistory.humidity,
+      color: "#3DBFAD",
+    },
+    {
+      label: "CO₂",
+      current: sensorData && sensorData.co2 != null ? `${sensorData.co2} ppm` : "Loading...",
+      data: sensorHistory.co2,
+      color: "#E8A838",
+    },
   ];
   return (
     <div className="w-full bg-forest-secondary border border-border-forest-light rounded mb-6 flex divide-x divide-border-forest-light overflow-hidden">
@@ -172,22 +211,59 @@ const KpiCard = ({ label, value, unit, color, sparkData }: { label: string; valu
 );
 
 // ─── OVERVIEW TAB ──────────────────────────────────────────────────────────────
-const OverviewTab = () => (
+const OverviewTab = ({
+  sensorData,
+  sensorHistory,
+}: {
+  sensorData: SensorData | null;
+  sensorHistory: {
+    aqi: number[];
+    pm25: number[];
+    humidity: number[];
+    nox: number[];
+    temperature: number[];
+    co2: number[];
+  };
+}) => (
   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-8 pb-32">
     <div className="mb-6 flex items-center justify-between">
       <div>
         <h1 className="font-display text-3xl text-cream">Air Quality Overview</h1>
-        <p className="font-sans text-sm text-muted mt-1">Zone 4A —Central Delhi · Updated 2 min ago</p>
+        <p className="font-sans text-sm text-muted mt-1">Zone 4A —Central Delhi · Auto-refresh every 2s</p>
       </div>
       <div className="h-3 w-3 rounded-full bg-health-green animate-pulse" />
     </div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-      <KpiCard label="Current AQI" value="87" unit="Moderate" color="#E8A838" sparkData={[75,80,85,82,88,84,87]} />
-      <KpiCard label="PM 2.5" value="42" unit="µg/m³" color="#C6E47A" sparkData={[55,48,42,51,44,39,42]} />
-      <KpiCard label="PM 10" value="67" unit="µg/m³" color="#E8A838" sparkData={[70,65,72,68,66,71,67]} />
-      <KpiCard label="CO₂" value="412" unit="ppm" color="#3DBFAD" sparkData={[400,408,415,410,405,414,412]} />
+      <KpiCard
+        label="Current AQI"
+        value={sensorData ? String(sensorData.aqi) : "Loading..."}
+        unit={sensorData ? sensorData.status : "Loading..."}
+        color={getAQIColor(sensorData?.aqi ?? 0)}
+        sparkData={sensorHistory.aqi}
+      />
+      <KpiCard
+        label="PM 2.5"
+        value={sensorData ? String(sensorData.pm25) : "Loading..."}
+        unit="µg/m³"
+        color="#C6E47A"
+        sparkData={sensorHistory.pm25}
+      />
+      <KpiCard
+        label="NOx"
+        value={sensorData && sensorData.nox != null ? String(sensorData.nox) : "Loading..."}
+        unit="ppb"
+        color="#3DBFAD"
+        sparkData={sensorHistory.nox}
+      />
+      <KpiCard
+        label="Temperature"
+        value={sensorData ? String(sensorData.temperature) : "Loading..."}
+        unit="°C"
+        color="#E8A838"
+        sparkData={sensorHistory.temperature}
+      />
     </div>
-    <SparklineStrip />
+    <SparklineStrip sensorData={sensorData} sensorHistory={sensorHistory} />
     <div className="w-full p-4 mb-6 bg-health-amber/10 border-l-4 border-health-amber rounded flex items-start gap-4">
       <AlertTriangle className="h-5 w-5 text-health-amber shrink-0 mt-0.5" />
       <div className="flex-1">
@@ -658,9 +734,9 @@ const SettingsTab = () => {
         <div className="section-label">Account</div>
         <div className="bg-forest-card border border-border-forest-light rounded p-6 space-y-5">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent-teal/20 border-2 border-accent-teal flex items-center justify-center text-accent-teal font-bold text-xl">AM</div>
+            <div className="w-14 h-14 rounded-full bg-accent-teal/20 border-2 border-accent-teal flex items-center justify-center text-accent-teal font-bold text-xl">S</div>
             <div>
-              <p className="font-sans font-semibold text-cream">Alex M.</p>
+              <p className="font-sans font-semibold text-cream">Shivani</p>
               <p className="font-data text-xs text-lime mt-0.5">Citizen · Verified</p>
             </div>
           </div>
@@ -730,19 +806,61 @@ const SettingsTab = () => {
 };
 
 // ─── Main layout ───────────────────────────────────────────────────────────────
-export const CitizenDashboard = () => (
-  <div className="min-h-screen bg-forest-primary font-sans pt-18">
-    <Sidebar />
-    <div className="ml-60 min-h-screen">
-      <Routes>
-        <Route path="/"           element={<OverviewTab />} />
-        <Route path="/map"        element={<AirMapTab />} />
-        <Route path="/report"     element={<ReportTab />} />
-        <Route path="/complaints" element={<ComplaintsTab />} />
-        <Route path="/messages"   element={<MessagesTab />} />
-        <Route path="/settings"   element={<SettingsTab />} />
-        <Route path="*"           element={<OverviewTab />} />
-      </Routes>
+export const CitizenDashboard = () => {
+  const [data, setData] = useState<SensorData | null>(null);
+  const [sensorHistory, setSensorHistory] = useState<{
+    aqi: number[];
+    pm25: number[];
+    humidity: number[];
+    nox: number[];
+    temperature: number[];
+    co2: number[];
+  }>({
+    aqi: [],
+    pm25: [],
+    humidity: [],
+    nox: [],
+    temperature: [],
+    co2: [],
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await getSensorData();
+        setData(res);
+        setSensorHistory((prev) => ({
+          aqi: [...prev.aqi, res.aqi].slice(-14),
+          pm25: [...prev.pm25, res.pm25].slice(-14),
+          humidity: [...prev.humidity, res.humidity].slice(-14),
+          nox: [...prev.nox, res.nox].slice(-14),
+          temperature: [...prev.temperature, res.temperature].slice(-14),
+          co2: [...prev.co2, res.co2].slice(-14),
+        }));
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-forest-primary font-sans pt-18">
+      <Sidebar sensorData={data} />
+      <div className="ml-60 min-h-screen">
+        <Routes>
+          <Route path="/" element={<OverviewTab sensorData={data} sensorHistory={sensorHistory} />} />
+          <Route path="/map" element={<AirMapTab />} />
+          <Route path="/report" element={<ReportTab />} />
+          <Route path="/complaints" element={<ComplaintsTab />} />
+          <Route path="/messages" element={<MessagesTab />} />
+          <Route path="/settings" element={<SettingsTab />} />
+          <Route path="*" element={<OverviewTab sensorData={data} sensorHistory={sensorHistory} />} />
+        </Routes>
+      </div>
     </div>
-  </div>
-);
+  );
+};

@@ -1,8 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Sora:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -119,6 +115,11 @@
     @apply font-sans;
   }
 }
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
 
 @layer utilities {
   .font-display { font-family: var(--font-serif); }

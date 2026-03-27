@@ -36,6 +36,17 @@ export interface IssueUpdate {
 	createdAt?: string;
 }
 
+export interface SensorData {
+	temperature: number;
+	humidity: number;
+	aqi: number;
+	pm25: number;
+	co2: number;
+	nox: number;
+	status: string;
+	danger: boolean;
+}
+
 type CreateIssuePayload = {
 	title: string;
 	description: string;
@@ -122,6 +133,12 @@ export function createIssueUpdate(payload: Omit<IssueUpdate, "_id">) {
 		body: JSON.stringify(payload),
 	});
 }
+
+export const getSensorData = async (): Promise<SensorData> => {
+	const res = await fetch("http://localhost:5000/api/sensor/latest");
+	if (!res.ok) throw new Error("Failed to fetch");
+	return res.json();
+};
 
 export async function getOrCreateDemoUser(role: UserRole) {
 	const defaults: Record<UserRole, Omit<User, "_id">> = {

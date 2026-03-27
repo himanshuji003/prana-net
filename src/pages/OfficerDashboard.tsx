@@ -21,13 +21,13 @@ const BottomNav = () => {
     { name: "Me",     path: "/officer/profile",  icon: User },
   ];
   return (
-    <div className="fixed bottom-0 left-0 w-full h-16 bg-[#0D1A12] border-t border-border-forest-light z-50 flex items-center justify-around px-2">
+    <div className="fixed bottom-0 left-0 w-full h-16 bg-forest-primary border-t border-health-green/30 z-50 flex items-center justify-around px-2">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path;
         const Icon = item.icon;
         return (
           <Link key={item.name} to={item.path}
-            className={cn("flex flex-col items-center justify-center w-16 h-full relative transition-colors", isActive ? "text-lime" : "text-muted hover:text-cream")}>
+            className={cn("flex flex-col items-center justify-center w-16 h-full relative transition-colors", isActive ? "text-health-green" : "text-muted hover:text-cream")}>
             <Icon className="h-5 w-5 mb-1" />
             <span className="font-sans text-[10px] uppercase font-semibold">{item.name}</span>
             {item.badge && <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-health-red flex items-center justify-center font-data text-[9px] text-white font-bold">{item.badge}</div>}
@@ -448,7 +448,7 @@ type Msg = { id: number; from: "me" | "citizen" | "command"; text: string; time:
 
 const OfficerChatTab = () => {
   const threads = [
-    { id: "TKN-2024-847", name: "Alex M. (Citizen)", avatar: "AM", last: "Yes, south gate facing N.R. road.", time: "12:27 PM", unread: 1, active: true },
+    { id: "TKN-2024-847", name: "Shivani (Citizen)", avatar: "S", last: "Yes, south gate facing N.R. road.", time: "12:27 PM", unread: 1, active: true },
     { id: "CMD", name: "Command Center", avatar: "CC", last: "Proceed to Zone 4A. Take readings.", time: "12:20 PM", unread: 0, active: true },
   ];
 
@@ -666,16 +666,20 @@ const OfficerDashboardContent = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-forest-primary font-sans pt-18 max-w-120 mx-auto relative">
-        <Routes>
-          <Route path="/"         element={<ActiveTaskTab officerName={officer?.name} officerId={officer?._id} />} />
-          <Route path="/map"      element={<OfficerMapTab />} />
-          <Route path="/tasks"    element={<OfficerTasksTab officer={officer} />} />
-          <Route path="/messages" element={<OfficerChatTab />} />
-          <Route path="/profile"  element={<ProfileTab officer={officer} />} />
-          <Route path="*"         element={<OfficerTasksTab officer={officer} />} />
-        </Routes>
-      </div>
+      
+           <div className="bg-gradient-to-b bg-forest-elevated">
+              <div className="min-h-screen bg-forest-primary font-sans pt-18  mx-120 relative ">
+                  <Routes>
+                    <Route path="/"         element={<ActiveTaskTab officerName={officer?.name} officerId={officer?._id} />} />
+                    <Route path="/map"      element={<OfficerMapTab />} />
+                    <Route path="/tasks"    element={<OfficerTasksTab officer={officer} />} />
+                    <Route path="/messages" element={<OfficerChatTab />} />
+                    <Route path="/profile"  element={<ProfileTab officer={officer} />} />
+                    <Route path="*"         element={<OfficerTasksTab officer={officer} />} />
+                  </Routes>
+               </div>
+           </div>
+      
       <BottomNav />
     </>
   );
