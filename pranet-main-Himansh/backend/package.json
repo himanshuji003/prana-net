@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "prana-net": "file:.."
+  }
+}
