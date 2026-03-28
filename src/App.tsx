@@ -26,8 +26,17 @@ const AnimatedRoutes = () => {
 };
 
 export const App = () => {
+  const env = import.meta.env as Record<string, string | undefined>;
+  const apiBaseUrl = process.env.REACT_APP_API_URL || env.REACT_APP_API_URL || env.VITE_API_URL || "";
+  const isApiUrlMissing = !apiBaseUrl;
+
   return (
     <Router>
+      {isApiUrlMissing && (
+        <div className="fixed top-0 left-0 right-0 z-[120] bg-amber-300 text-amber-950 px-3 py-2 text-xs sm:text-sm text-center font-semibold border-b border-amber-400">
+          API URL is missing. Set REACT_APP_API_URL in Netlify environment variables, then redeploy.
+        </div>
+      )}
       <GradientMeshBackground />
       <GlassNavbar />
       <Suspense fallback={<div className="min-h-screen bg-forest-primary flex items-center justify-center text-lime font-data animate-pulse">Initializing PRANA-NET...</div>}>

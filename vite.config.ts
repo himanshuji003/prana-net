@@ -4,6 +4,12 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 export default defineConfig({
+  envPrefix: ["VITE_", "REACT_APP_"],
+  define: {
+    "process.env.REACT_APP_API_URL": JSON.stringify(
+      process.env.REACT_APP_API_URL || process.env.VITE_API_URL || "",
+    ),
+  },
   plugins: [
     tailwindcss(),
     react()

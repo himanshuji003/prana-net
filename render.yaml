@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: prana-net-api
+    env: node
+    rootDir: .
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: ALLOWED_ORIGINS
+        value: https://prena-net.netlify.app,https://*.netlify.app
