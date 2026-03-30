@@ -27,14 +27,14 @@ const AnimatedRoutes = () => {
 
 export const App = () => {
   const env = import.meta.env as Record<string, string | undefined>;
-  const apiBaseUrl = process.env.REACT_APP_API_URL || env.REACT_APP_API_URL || env.VITE_API_URL || "";
+  const apiBaseUrl = env.VITE_API_URL || "";
   const isApiUrlMissing = !apiBaseUrl;
 
   return (
     <Router>
       {isApiUrlMissing && (
         <div className="fixed top-0 left-0 right-0 z-[120] bg-amber-300 text-amber-950 px-3 py-2 text-xs sm:text-sm text-center font-semibold border-b border-amber-400">
-          API URL is missing. Set REACT_APP_API_URL in Netlify environment variables, then redeploy.
+          API URL is missing. Set VITE_API_URL=http://localhost:5000 in .env file, then restart dev server.
         </div>
       )}
       <GradientMeshBackground />

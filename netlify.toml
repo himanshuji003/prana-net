@@ -2,10 +2,6 @@
   command = "npm run build"
   publish = "dist"
 
-[build.environment]
-  VITE_API_URL = "https://prana-net-1.onrender.com"
-  REACT_APP_API_URL = "https://prana-net-1.onrender.com"
-
 [[redirects]]
   from = "/*"
   to = "/index.html"

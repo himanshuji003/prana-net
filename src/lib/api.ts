@@ -62,17 +62,13 @@ type CreateIssuePayload = {
   createdBy: string;
 };
 
-// ================= ENV FIX =================
+// ================= ENV CONFIG =================
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
-// ✅ Works for Vite + CRA + Netlify
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
-  (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) ||
-  "";
-
-// 🔥 Debug banner (optional)
+// 🔥 Debug console
+console.log("[API] VITE_API_URL =", import.meta.env.VITE_API_URL);
 if (!API_BASE) {
-  console.error("❌ API_BASE is missing! Set VITE_API_URL or REACT_APP_API_URL");
+  console.warn("⚠️  API_BASE is empty! Set VITE_API_URL in .env");
 }
 
 // ================= CORE FETCH =================
